@@ -1,0 +1,3158 @@
+<!doctype html>
+<html lang="vi">
+<style>
+/* Gradient chữ chạy nhẹ (nếu muốn dùng cho slogan) */
+@keyframes galaxy {
+  0%,100% { background-position: 0% 50%; }
+  50%     { background-position: 100% 50%; }
+}
+.animate-galaxy{ background-size:200% 200%; animation:galaxy 6s ease-in-out infinite alternate; }
+
+/* (Optional) sao “twinkle” cho các dot tĩnh nếu bạn thêm thủ công */
+@keyframes twinkle {
+  0%,100% { opacity:.25; transform:scale(.85); }
+  50%     { opacity:1;   transform:scale(1.25); }
+}
+</style>
+
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Engliverse – English Courses</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { 600: "#6d28d9", 700: "#5b21b6" },
+            accent: { 400: "#f59e0b" },
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+  /* —— Benefit – Base —— */
+  .benefit-tilt { perspective: 900px; }
+
+  .benefit-card{
+    position: relative;
+    border-radius: 1rem;
+    background: rgba(255,255,255,.96);
+    border: 1px solid rgb(229 231 235 / 1);
+    box-shadow: 0 8px 20px rgba(17,24,39,.06);
+    transform-style: preserve-3d;
+    will-change: transform, box-shadow, border-color;
+    transition: transform .35s ease, box-shadow .35s ease, border-color .35s ease;
+    transform: rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(0);
+  }
+  .benefit-card:hover{
+    box-shadow: 0 18px 50px rgba(109,40,217,.18);
+    transform: translateZ(6px);
+  }
+
+  /* Glow viền gradient – hiện khi hover/focus */
+  .benefit-card.glow::after{
+    content:"";
+    position:absolute; inset:-1px; border-radius:inherit;
+    background: linear-gradient(90deg,#6d28d9,#f59e0b,#6d28d9);
+    opacity:0; transition:opacity .35s ease; pointer-events:none;
+    /* mask (kèm webkit) để chỉ sáng ở viền */
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+    padding:1px;
+  }
+  .benefit-card:hover.glow::after,
+  .benefit-card:focus-visible.glow::after{ opacity:1; }
+
+  /* Nhấn mạnh số/tựa khi hover */
+  .benefit-card:hover .benefit-num{ color:#5b21b6; transform:translateZ(18px); }
+  .benefit-card:hover .benefit-title{ color:#111827; }
+
+  /* Reduce-motion an toàn */
+  @media (prefers-reduced-motion: reduce){
+    .benefit-card{ transition:none; transform:none; }
+    .benefit-card:hover{ transform:none; }
+  }
+  </style>
+
+  <style>
+    .line-2{ display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow:hidden;}
+    .line-3{ display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; line-clamp:3; overflow:hidden;}
+  </style>
+  
+  <style>
+  /* Khung tỷ lệ 16:9 để mọi ảnh có chiều cao bằng nhau */
+  .ar-16-9 { aspect-ratio: 16/9; }
+  </style>
+
+    <style>
+    /* bóng mờ đều 4 cạnh (dùng khi ảnh full khung) */
+    .mask-vignette {
+      -webkit-mask-image: radial-gradient(120% 120% at 65% 50%, #000 60%, transparent 95%);
+              mask-image: radial-gradient(120% 120% at 65% 50%, #000 60%, transparent 95%);
+    }
+
+    /* mờ dần về bên trái (phổ biến cho hero ảnh nằm phải) */
+    .mask-fade-l {
+      -webkit-mask-image: linear-gradient(to left, #000 72%, rgba(0,0,0,0) 98%);
+              mask-image: linear-gradient(to left, #000 72%, rgba(0,0,0,0) 98%);
+    }
+
+    /* nếu cần mờ cả trên/dưới rất nhẹ để hòa vào nền + sao */
+    .mask-fade-l-tb {
+      -webkit-mask-image:
+        radial-gradient(180% 140% at 68% 50%, #000 65%, rgba(0,0,0,0) 95%),
+        linear-gradient(to left, #000 70%, rgba(0,0,0,0) 97%);
+              mask-image:
+        radial-gradient(180% 140% at 68% 50%, #000 65%, rgba(0,0,0,0) 95%),
+        linear-gradient(to left, #000 70%, rgba(0,0,0,0) 97%);
+      -webkit-mask-composite: source-in;
+              mask-composite: intersect;
+    }
+  </style>
+</head>
+
+<script src="/icons.js"></script>
+
+<script>
+const DEFAULT_AVATAR = "https://i.pravatar.cc/80?u=";
+
+const EV_USER_KEY = 'ev_user';
+function getUser(){
+  try { return JSON.parse(localStorage.getItem(EV_USER_KEY) || "null"); }
+  catch { return null; }
+}
+function isLoggedIn(){ return !!getUser(); }
+/** 
+ * Nếu chưa đăng nhập: lưu ý định (intent) vào sessionStorage và chuyển tới #/auth
+ * intent ví dụ: {type:'add', id:'ielts-7-plus'} | {type:'checkout', id:'english-for-it'} | {type:'checkout-cart'}
+ * Trả về true nếu đã đăng nhập, false nếu đã chuyển hướng sang login.
+ */
+function requireAuthOrRedirect(intent){
+  if (isLoggedIn()) return true;
+  sessionStorage.setItem(PENDING_KEY, JSON.stringify(intent || {}));
+  location.hash = '#/auth';
+  return false;
+}
+
+/** Gọi hàm này NGAY sau khi đăng nhập thành công */
+function resumePendingAction(){
+  const raw = sessionStorage.getItem(PENDING_KEY);
+  if (!raw) return;
+  sessionStorage.removeItem(PENDING_KEY);
+
+  let p = null;
+  try { p = JSON.parse(raw); } catch {}
+  if (!p || !p.type) return;
+
+  switch (p.type) {
+    case 'add':
+      // addToCart của bạn đã có
+      addToCart(p.id);
+      location.hash = p.back || '#/cart';
+      break;
+    case 'checkout':
+      location.hash = `#/checkout/${p.id}`;
+      break;
+    case 'checkout-cart':
+      location.hash = '#/checkout/cart';
+      break;
+  }
+}
+function setUser(u){
+  localStorage.setItem(EV_USER_KEY, JSON.stringify(u));
+  renderAuthSlot();
+}
+function logout(){
+  localStorage.removeItem(EV_USER_KEY);
+  renderAuthSlot();
+  location.hash = "#/"; // đưa về trang chủ (tuỳ ý)
+}
+
+function renderAuthSlot(){
+  const slot = document.getElementById("auth-slot");
+  if(!slot) return;
+
+  const user = getUser();
+
+  if(!user){
+    // Chưa đăng nhập → hiện nút
+    slot.innerHTML = `
+      <div class="flex items-center gap-2">
+        <a href="#/auth" class="px-3 py-1.5 rounded-md border text-sm">Đăng nhập</a>
+        <a href="#/signup" class="px-3 py-1.5 rounded-md bg-primary-600 text-white text-sm">Đăng ký</a>
+      </div>
+    `;
+  }else{
+    // Đã đăng nhập → hiện avatar + menu
+    const ava = user.avatar || (DEFAULT_AVATAR + encodeURIComponent(user.email||user.name||"u"));
+    slot.innerHTML = `
+      <div class="relative group">
+        <button class="inline-flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-100">
+          <img src="${ava}" class="h-8 w-8 rounded-full border" />
+          <span class="hidden sm:inline font-medium">${user.name}</span>
+          <svg class="h-4 w-4 opacity-60" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m7 10 5 5 5-5" stroke-width="2"/></svg>
+        </button>
+        <div class="absolute right-0 top-10 hidden group-hover:block bg-white border rounded-xl shadow-lg w-44 p-2">
+          <a href="#/dashboard" class="block px-3 py-2 rounded-md hover:bg-slate-50">Khóa học của tôi</a>
+          <a href="#/cart" class="block px-3 py-2 rounded-md hover:bg-slate-50">Giỏ hàng</a>
+          <button onclick="logout()" class="w-full text-left px-3 py-2 rounded-md hover:bg-slate-50 text-red-600">Đăng xuất</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+// render khi trang load và khi đổi hash (để chắc chắn header cập nhật)
+window.addEventListener("load", renderAuthSlot);
+window.addEventListener("hashchange", renderAuthSlot);
+// đồng bộ giữa nhiều tab
+window.addEventListener("storage", (e)=>{ if(e.key==="USER") renderAuthSlot(); });
+</script>
+
+
+<body class="min-h-screen flex flex-col bg-white text-slate-800">
+  <!-- Navbar -->
+  <header class="sticky top-0 z-40 border-b bg-white/90 backdrop-blur">
+    <div class="mx-auto max-w-6xl px-4 h-14 flex items-center justify-between">
+      <a href="#/" class="flex items-center gap-2">
+        <img 
+          src="./Logo.png" 
+          alt="Engliverse Logo"
+          class="h-15 w-12 object-contain"
+        />
+        <span class="hidden sm:block font-extrabold text-primary-700">Engliverse</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-6 text-sm text-slate-600 ml-8">
+        <a href="#/" class="hover:text-slate-900">Home</a>
+        <a href="#/courses" class="hover:text-slate-900">Courses</a>
+        <a href="#/blog" class="hover:text-slate-900">Blog</a>
+        <a href="#/about" class="hover:text-slate-900">About</a>
+        <a href="#/cart" class="hover:text-slate-900">Cart</a>
+        <a href="#/my-courses" class="hover:text-slate-900">My Courses</a>
+      </nav>
+      <div id="auth-slot" class="ml-auto flex items-center gap-2"></div>  
+    </div>
+  </header>
+
+  <main id="app" class="flex-grow"></main>
+
+  <!-- Footer -->
+  <footer class="border-t bg-white">
+    <div class="max-w-6xl mx-auto px-4 py-10">
+      <div class="grid gap-10 md:grid-cols-4">
+        <!-- Logo + Contact -->
+        <div class="space-y-4">
+          <div class="flex items-center gap-3">
+            <!-- đổi đường dẫn logo của bạn ở đây -->
+            <img src="./Logo.png" alt="Engliverse"
+                class="h-10 w-10 rounded-md shadow-sm" />
+          </div>
+
+          <ul class="mt-4 space-y-2 text-slate-600 text-sm">
+            <li class="flex items-center gap-2">
+              <!-- mail -->
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"
+                  d="M21.75 7.5v9a2.25 2.25 0 0 1-2.25 2.25h-15A2.25 2.25 0 0 1 2.25 16.5v-9A2.25 2.25 0 0 1 4.5 5.25h15A2.25 2.25 0 0 1 21.75 7.5z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"
+                  d="m21.75 7.5-9.75 6-9.75-6" />
+              </svg>
+              support@engliverse.example
+            </li>
+            <li class="flex items-center gap-2">
+              <!-- phone -->
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"
+                  d="M2.25 6.75c0 8.008 6.492 14.5 14.5 14.5h1.5a2 2 0 0 0 2-2v-2.03a1.5 1.5 0 0 0-1.08-1.44l-3.07-.88a1.5 1.5 0 0 0-1.47.38l-.98.98a11.5 11.5 0 0 1-5.62-5.62l.98-.98a1.5 1.5 0 0 0 .38-1.47l-.88-3.07A1.5 1.5 0 0 0 6.28 3.75H4.25a2 2 0 0 0-2 2v1z" />
+              </svg>
+              +84 912 345 678
+            </li>
+            <li class="flex items-center gap-2">
+              <!-- location -->
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7"
+                  d="M12 21.75s7.5-5.25 7.5-12A7.5 7.5 0 1 0 4.5 9.75c0 6.75 7.5 12 7.5 12z" />
+                <circle cx="12" cy="9.75" r="2.25" stroke-width="1.7" />
+              </svg>
+              TP.HCM, Việt Nam
+            </li>
+          </ul>
+        </div>
+
+        <!-- Home -->
+        <div>
+          <div class="font-semibold text-slate-900 mb-3">Home</div>
+          <ul class="space-y-2 text-sm text-slate-600">
+            <li><a href="#/benefits" class="hover:text-slate-900">Benefits</a></li>
+            <li><a href="#/courses" class="hover:text-slate-900">Our Courses</a></li>
+            <li><a href="#/about" class="hover:text-slate-900">Our Testimonials</a></li>
+            <li><a href="#/about" class="hover:text-slate-900">Our FAQ</a></li>
+          </ul>
+        </div>
+
+        <!-- About Us -->
+        <div>
+          <div class="font-semibold text-slate-900 mb-3">About Us</div>
+          <ul class="space-y-2 text-sm text-slate-600">
+            <li><a href="#/about" class="hover:text-slate-900">Company</a></li>
+            <li><a href="#/about" class="hover:text-slate-900">Achievements</a></li>
+            <li><a href="#/about" class="hover:text-slate-900">Our Goals</a></li>
+          </ul>
+        </div>
+
+        <!-- Social Profiles -->
+        <div>
+          <div class="font-semibold text-slate-900 mb-3">Social Profiles</div>
+          <div class="flex items-center gap-3">
+            <!-- Facebook -->
+            <a href="https://facebook.com" target="_blank" 
+              class="h-9 w-9 inline-flex items-center justify-center rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M22 12.06C22 6.55 17.52 2 12.06 2S2 6.55 2 12.06c0 5 3.66 9.13 8.44 9.94v-7.03H7.9v-2.9h2.54V9.41c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.23.2 2.23.2v2.45h-1.25c-1.24 0-1.63.77-1.63 1.56v1.87h2.78l-.44 2.9h-2.34v7.03C18.34 21.2 22 17.07 22 12.06z"/>
+              </svg>
+            </a>
+            <!-- Twitter/X -->
+            <a href="https://twitter.com" target="_blank" 
+              class="h-9 w-9 inline-flex items-center justify-center rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18.244 2h3.308l-7.23 8.26L22 22h-6.59l-5.16-6.73L4.22 22H.91l7.73-8.84L0 2h6.75l4.66 6.16L18.244 2zm-1.154 18.4h1.833L7.05 3.52H5.1L17.09 20.4z"/>
+              </svg>
+            </a>
+            <!-- LinkedIn -->
+            <a href="https://linkedin.com" target="_blank" 
+              class="h-9 w-9 inline-flex items-center justify-center rounded-md bg-slate-100 text-slate-600 hover:bg-slate-200">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M4.98 3.5C4.98 4.88 3.86 6 2.5 6S0 4.88 0 3.5C0 2.12 1.12 1 2.5 1S4.98 2.12 4.98 3.5zM.24 8.5h4.52V23H.24V8.5zM8.34 8.5h4.33v1.98h.06c.6-1.14 2.06-2.34 4.24-2.34 4.54 0 5.38 2.99 5.38 6.88V23h-4.52v-6.42c0-1.53-.03-3.49-2.12-3.49-2.12 0-2.44 1.66-2.44 3.38V23H8.34V8.5z"/>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <hr class="my-8">
+      <p class="text-center text-sm text-slate-500">© 2025 Engliverse. All rights reserved.</p>
+    </div>
+  </footer>
+  <script>
+    // document.getElementById("year").textContent = new Date().getFullYear();
+
+// GIỮ nguyên COURSES nhưng thêm các field bên dưới
+  const COURSES = [
+    { id:"ielts-7-plus",  tag:"IELTS",   title:"IELTS 7.0+ Intensive",
+      author:"Ms. Hannah", rating:4.9, students:12640, duration:"10 tuần • 60+ bài",
+      price:1299000, img:"https://images.unsplash.com/photo-1513258496099-48168024aec0?q=80&w=1200&auto=format&fit=crop",
+      intro:"Lộ trình tăng band điểm toàn diện 4 kỹ năng.",
+      cat:"testprep", level:"intermediate", format:"self-paced" },
+
+    { id:"toeic-800-target", tag:"TOEIC", title:"TOEIC 800+ Target in 6 Weeks",
+      author:"Mr. Quang", rating:4.8, students:9820, duration:"6 tuần • 40+ bài",
+      price:899000, img:"https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?q=80&w=1200&auto=format&fit=crop",
+      intro:"Chiến thuật Part 1–7 & quản lý thời gian.",
+      cat:"testprep", level:"elementary", format:"cohort" },
+
+    { id:"speaking-mastery", tag:"Speaking", title:"Speaking Mastery",
+      author:"Coach Linh", rating:4.9, students:7521, duration:"8 tuần • 48+ buổi",
+      price:1199000, img:"https://plus.unsplash.com/premium_photo-1670884442051-263f5ae2d6ed?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=2070",
+      intro:"Nối âm, phản xạ tự nhiên & storytelling.",
+      cat:"skills", level:"intermediate", format:"live-1vN" },
+  ];
+  COURSES.push(
+    /* ====== Test-prep: +5 ====== */
+    {
+      id:"ielts-foundation", tag:"IELTS", title:"IELTS Foundation 5.0+",
+      author:"Ms. Anna", rating:4.7, students:6800, duration:"8 tuần • 45+ bài",
+      price:699000,
+      img:"https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?q=80&w=1200&auto=format&fit=crop",
+      intro:"Nền tảng 4 kỹ năng, ngữ pháp – từ vựng cốt lõi để đạt 5.0+.",
+      cat:"testprep", level:"beginner", format:"cohort"
+    },
+    {
+      id:"ielts-writing-band7", tag:"IELTS", title:"IELTS Writing Band 7.0",
+      author:"Dr. Peter", rating:4.8, students:4120, duration:"6 tuần • 30+ bài",
+      price:1099000,
+      img:"https://images.unsplash.com/photo-1512917774080-9991f1c4c750?q=80&w=1200&auto=format&fit=crop",
+      intro:"Task 1/2 – cấu trúc, từ vựng band 7, chiến lược sửa bài chi tiết.",
+      cat:"testprep", level:"upper", format:"live-1vN"
+    },
+    {
+      id:"toeic-foundation-600", tag:"TOEIC", title:"TOEIC Foundation 600+",
+      author:"Mr. Tom", rating:4.7, students:10520, duration:"5 tuần • 32+ bài",
+      price:649000,
+      img:"https://images.unsplash.com/photo-1531482615713-2afd69097998?q=80&w=1200&auto=format&fit=crop",
+      intro:"Chiến thuật cơ bản, luyện part 1–7, tăng tốc đến 600+.",
+      cat:"testprep", level:"elementary", format:"self-paced"
+    },
+    {
+      id:"toefl-ibt-90", tag:"TOEFL iBT", title:"TOEFL iBT 90+ Intensive",
+      author:"Ms. Sophie", rating:4.8, students:3870, duration:"7 tuần • 50+ bài",
+      price:1299000,
+      img:"https://images.unsplash.com/photo-1513258496099-48168024aec0?q=80&w=1200&auto=format&fit=crop",
+      intro:"Kỹ năng tích hợp Reading–Listening–Speaking–Writing chuyên sâu.",
+      cat:"testprep", level:"intermediate", format:"cohort"
+    },
+    {
+      id:"vstep-b2", tag:"VSTEP", title:"VSTEP B2 Target",
+      author:"Mr. Minh", rating:4.7, students:5220, duration:"6 tuần • 38+ bài",
+      price:799000,
+      img:"https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1200&auto=format&fit=crop",
+      intro:"Định dạng đề, luyện đề theo ma trận – chinh phục chuẩn B2.",
+      cat:"testprep", level:"intermediate", format:"live-1vN"
+    },
+
+    /* ====== Skills: +8 ====== */
+    {
+      id:"pronunciation-pro", tag:"Pronunciation", title:"Phát Âm Chuẩn – Giảm Accent Việt",
+      author:"Coach Linh", rating:4.9, students:9340, duration:"6 tuần • 36+ bài",
+      price:899000,
+      img:"https://images.unsplash.com/photo-1485217988980-11786ced9454?q=80&w=1200&auto=format&fit=crop",
+      intro:"IPA, nối âm – nuốt âm, nhịp – ngữ điệu để nói tự nhiên.",
+      cat:"skills", level:"intermediate", format:"cohort"
+    },
+    {
+      id:"email-writing-pro", tag:"Business Writing", title:"Viết Email Thương Mại Chuyên Nghiệp",
+      author:"Ms. Kate", rating:4.8, students:11840, duration:"4 tuần • 24+ bài",
+      price:749000,
+      img:"https://images.unsplash.com/photo-1494173853739-c21f58b16055?q=80&w=1200&auto=format&fit=crop",
+      intro:"Cấu trúc – giọng điệu – mẫu câu chuyên nghiệp cho doanh nghiệp.",
+      cat:"skills", level:"upper", format:"self-paced"
+    },
+    {
+      id:"business-presentation", tag:"Presentation", title:"Thuyết Trình Bằng Tiếng Anh",
+      author:"Mr. David", rating:4.8, students:6420, duration:"5 tuần • 28+ bài",
+      price:899000,
+      img:"https://images.unsplash.com/photo-1515187029135-18ee286d815b?q=80&w=1200&auto=format&fit=crop",
+      intro:"Storytelling, slide logic, ngôn ngữ cơ thể & luyện demo.",
+      cat:"skills", level:"intermediate", format:"live-1vN"
+    },
+    {
+      id:"negotiation-english", tag:"Negotiation", title:"Đàm Phán & Thương Lượng",
+      author:"Mr. Alex", rating:4.7, students:5240, duration:"4 tuần • 20+ buổi",
+      price:999000,
+      img:"https://images.unsplash.com/photo-1523958203904-cdcb402031fd?q=80&w=1200&auto=format&fit=crop",
+      intro:"Chiến lược BATNA, nhượng bộ, mẫu câu/chiến thuật thực chiến.",
+      cat:"skills", level:"upper", format:"live-1vN"
+    },
+    {
+      id:"speaking-club-plus", tag:"Speaking", title:"Speaking Club Plus – Phản Xạ Tự Nhiên",
+      author:"Coach Hana", rating:4.9, students:15420, duration:"8 tuần • 16 buổi live",
+      price:1199000,
+      img:"https://images.unsplash.com/photo-1485217988980-11786ced9454?q=80&w=1200&auto=format&fit=crop",
+      intro:"Chủ đề công việc – đời sống, feedback cá nhân từng buổi.",
+      cat:"skills", level:"intermediate", format:"live-1vN"
+    },
+    {
+      id:"grammar-boost", tag:"Grammar", title:"Grammar Boost – Ngữ Pháp Ứng Dụng",
+      author:"Ms. May", rating:4.6, students:20100, duration:"5 tuần • 35+ bài",
+      price:499000,
+      img:"https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=1200&auto=format&fit=crop",
+      intro:"Ngữ pháp nền tảng – ứng dụng thực tế cho nói/viết.",
+      cat:"skills", level:"beginner", format:"self-paced"
+    },
+    {
+      id:"listening-shadowing", tag:"Listening", title:"Listening & Shadowing Mastery",
+      author:"Mr. Sean", rating:4.8, students:8730, duration:"6 tuần • 30+ bài",
+      price:799000,
+      img:"https://images.unsplash.com/photo-1475724017904-b712052c192a?q=80&w=1200&auto=format&fit=crop",
+      intro:"Kỹ thuật shadowing, chunking, nhận diện âm liên kết.",
+      cat:"skills", level:"elementary", format:"cohort"
+    },
+    {
+      id:"academic-vocabulary", tag:"Vocabulary", title:"Academic Vocabulary Builder",
+      author:"Ms. Nora", rating:4.7, students:5630, duration:"4 tuần • 24+ bài",
+      price:599000,
+      img:"https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=1200&auto=format&fit=crop",
+      intro:"Từ vựng học thuật theo chủ đề, collocations, word formation.",
+      cat:"skills", level:"intermediate", format:"self-paced"
+    },
+
+    /* ====== ESP: +7 ====== */
+    {
+      id:"english-for-it", tag:"ESP – IT", title:"English for IT Professionals",
+      author:"Mr. Brian", rating:4.8, students:7420, duration:"6 tuần • 24+ buổi",
+      price:1399000,
+      img:"https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200&auto=format&fit=crop",
+      intro:"Thuật ngữ dev, quy trình agile, code review & demo sprint.",
+      cat:"esp", level:"upper", format:"live-1vN"
+    },
+    {
+      id:"english-for-finance", tag:"ESP – Finance", title:"English for Finance & Banking",
+      author:"Ms. Julia", rating:4.8, students:6180, duration:"6 tuần • 30+ bài",
+      price:1499000,
+      img:"https://images.unsplash.com/photo-1554224155-1696413565d3?q=80&w=1200&auto=format&fit=crop",
+      intro:"Báo cáo, chỉ số tài chính, phân tích & thuyết trình kết quả.",
+      cat:"esp", level:"upper", format:"cohort"
+    },
+    {
+      id:"english-for-marketing", tag:"ESP – Marketing", title:"English for Digital Marketing",
+      author:"Mr. Kevin", rating:4.7, students:5640, duration:"5 tuần • 26+ bài",
+      price:1099000,
+      img:"https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1115",
+      intro:"Campaign brief, creative pitch, KPI & báo cáo performance.",
+      cat:"esp", level:"intermediate", format:"self-paced"
+    },
+    {
+      id:"english-for-logistics", tag:"ESP – Logistics", title:"English for Logistics & Supply Chain",
+      author:"Ms. Ella", rating:4.7, students:4280, duration:"5 tuần • 24+ bài",
+      price:1199000,
+      img:"https://images.unsplash.com/photo-1587293852726-70cdb56c2866?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1172",
+      intro:"Incoterms, chứng từ, email giao nhận & xử lý sự cố.",
+      cat:"esp", level:"intermediate", format:"cohort"
+    },
+    {
+      id:"english-for-healthcare", tag:"ESP – Healthcare", title:"English for Healthcare",
+      author:"Dr. Amy", rating:4.8, students:3920, duration:"6 tuần • 20+ buổi",
+      price:1699000,
+      img:"https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1200&auto=format&fit=crop",
+      intro:"Giao tiếp bệnh nhân, thuật ngữ lâm sàng & ghi chú y khoa.",
+      cat:"esp", level:"upper", format:"live-1v1"
+    },
+    {
+      id:"english-for-data", tag:"ESP – Data", title:"English for Data Science",
+      author:"Mr. Chris", rating:4.8, students:4510, duration:"5 tuần • 25+ bài",
+      price:1399000,
+      img:"https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=1200&auto=format&fit=crop",
+      intro:"Mô tả dataset, insight, trình bày mô hình & kỹ năng trình bày.",
+      cat:"esp", level:"upper", format:"cohort"
+    },
+    {
+      id:"english-for-tourism", tag:"ESP – Tourism", title:"English for Hospitality & Tourism",
+      author:"Ms. Bella", rating:4.7, students:6030, duration:"4 tuần • 22+ bài",
+      price:999000,
+      img:"https://images.unsplash.com/photo-1473625247510-8ceb1760943f?q=80&w=1200&auto=format&fit=crop",
+      intro:"Tiếp tân – nhà hàng – tour – xử lý phàn nàn & nâng trải nghiệm.",
+      cat:"esp", level:"elementary", format:"self-paced"
+    },
+  );
+
+  const COURSE_DETAILS = {
+    /* 1) Grammar Boost – Ngữ Pháp Ứng Dụng */
+    "grammar": SectionHTML({
+      overview: `
+        Khóa học củng cố <b>ngữ pháp nền tảng</b> và ứng dụng thực tế trong viết/giao tiếp.
+        Bạn sẽ hiểu <i>vì sao câu đúng – sai</i>, tự tin triển khai câu phức và diễn đạt tự nhiên.
+      `,
+      learn: [
+        "Nắm vững 12 thì cơ bản & cấu trúc câu ứng dụng.",
+        "Phân biệt và sửa các lỗi ngữ pháp phổ biến trong viết & nói.",
+        "Áp dụng vào email, báo cáo, bài luận – chuẩn mực & mạch lạc.",
+        "Tự tin sử dụng mệnh đề quan hệ, cụm danh động từ, câu điều kiện…"
+      ],
+      suitableFor: [
+        "Người mất gốc/chưa chắc ngữ pháp.",
+        "Sinh viên, nhân viên văn phòng cần viết & nói chuẩn xác.",
+        "Người đang luyện thi IELTS/TOEIC (phần Grammar/Usage)."
+      ],
+      syllabus: [
+        ["Module 1", "Các thì & giá trị thời – cách kể chuỗi sự kiện"],
+        ["Module 2", "Câu bị động, câu điều kiện & mệnh đề quan hệ"],
+        ["Module 3", "Danh – động – tính – trạng từ & collocations"],
+        ["Module 4", "Cấu trúc học thuật trong email/bài luận"],
+        ["Capstone", "Bài viết tổng hợp + chấm chữa chi tiết 1-1"]
+      ],
+      instructor: `
+        <b>Ms. Anna Nguyễn</b> – ThS. Ngôn ngữ học ứng dụng, 8 năm giảng dạy IELTS/TOEFL.
+      `,
+      facts: [
+        "20 giờ video • 50 bài tập thực hành",
+        "Cấp độ: Beginner → Intermediate",
+        "Chấm chữa bài viết mẫu hàng tuần"
+      ]
+    }),
+
+    /* 2) Speaking Club Plus – Phản Xạ Tự Nhiên */
+    "speaking-club-plus": SectionHTML({
+      overview: `
+        Luyện phản xạ nói tiếng Anh tự nhiên qua <b>Speaking Club online</b> (nhóm nhỏ) với giáo viên nước ngoài.
+        Tập trung vào <b>fluency, pronunciation, idea development</b>.
+      `,
+      learn: [
+        "Nói nhanh – không dịch trong đầu, tránh ‘kẹt ý’.",
+        "Chỉnh phát âm, ngữ điệu, trọng âm – nói tự nhiên.",
+        "Vốn từ theo chủ đề: IELTS, công việc, giao tiếp đời sống.",
+        "Nhận feedback trực tiếp 1-1 từ giảng viên bản ngữ."
+      ],
+      suitableFor: [
+        "Đã có nền tảng cơ bản nhưng ngại nói.",
+        "Đi làm cần giao tiếp thực chiến.",
+        "IELTS Speaking 4.5–6.0 muốn bứt phá."
+      ],
+      syllabus: [
+        ["Week 1", "Breaking-the-ice, self-introduction, small talks"],
+        ["Week 2", "Opinion – agree/disagree – giving reasons"],
+        ["Week 3", "Describe/Explain – kể chuyện & mô tả tình huống"],
+        ["Week 4", "Work/Study/Email etiquette – nói trong công sở"],
+        ["Mock", "Mock Speaking + feedback chi tiết 1-1"]
+      ],
+      instructor: `
+        <b>Mr. John Walker</b> – CELTA Certified (UK), 7+ năm dạy Speaking.
+      `,
+      facts: [
+        "Nhóm 6–8 học viên • 8 buổi live",
+        "Cấp độ: Intermediate → Upper-Int",
+        "Recording & feedback sau mỗi buổi"
+      ]
+    }),
+
+    /* 3) IELTS 7.0+ Intensive */
+    "ielts-7-plus": SectionHTML({
+      overview: `
+        Lộ trình <b>IELTS 7.0+</b> chuyên sâu theo đề thi thật, kết hợp chữa bài 1-1.
+        Chiến lược từng kỹ năng giúp tiết kiệm 30% thời gian làm bài.
+      `,
+      learn: [
+        "Reading/Listening: Skimming, scanning, traps & timing.",
+        "Writing Task 1/2: Tư duy đoạn – cấu trúc – development.",
+        "Speaking: Paraphrase, ideas, coherence, lexical resource.",
+        "30 đề luyện & feedback chi tiết theo band descriptor."
+      ],
+      suitableFor: [
+        "Đã có nền tảng vững, mục tiêu 6.5–7.5.",
+        "Cần chứng chỉ du học/định cư/cơ hội nghề nghiệp.",
+        "Muốn tăng điểm nhanh trong 6–10 tuần."
+      ],
+      syllabus: [
+        ["Module 1", "Reading/Listening – phương pháp & traps thường gặp"],
+        ["Module 2", "Writing Task 1 – line, bar, table, process…"],
+        ["Module 3", "Writing Task 2 – lập luận & phát triển ý"],
+        ["Module 4", "Speaking – topic theo chủ đề, coherence & LR"],
+        ["Mock", "Full test + chữa bài chi tiết 1-1"]
+      ],
+      instructor: `
+        <b>ThS. Đoàn Minh Quân</b> – 9.0 Reading, 8.5 Speaking. 10 năm luyện thi.
+      `,
+      facts: [
+        "40 giờ video • 10 buổi chữa bài 1-1",
+        "Tài liệu Cambridge 15–18 + Mock độc quyền",
+        "Cấp độ: Upper-Intermediate → Advanced"
+      ]
+    }),
+
+    /* 4) TOEIC 800+ Target in 6 Weeks */
+    "toeic-800-target": SectionHTML({
+      overview: `
+        Chương trình tăng tốc đạt mục tiêu <b>TOEIC 800+</b> trong 6 tuần, tập trung Listening & Reading theo format mới.
+      `,
+      learn: [
+        "Chiến thuật Part 1–7, quản lý thời gian và tránh bẫy.",
+        "Listening: nhận diện từ nối, paraphrase, distractors.",
+        "Reading: skimming, scanning, grammar điểm rơi.",
+        "Bộ đề luyện bám sát đề thi thật – giải thích chi tiết."
+      ],
+      suitableFor: [
+        "Sinh viên cần TOEIC tốt nghiệp.",
+        "Người đi làm dùng TOEIC để thăng tiến.",
+        "Đang ở mức 500–650 muốn lên 800+."
+      ],
+      syllabus: [
+        ["Week 1", "Overview – chiến thuật tổng thể + Part 1,2"],
+        ["Week 2", "Part 3,4 – chủ đề thường gặp & từ đồng nghĩa"],
+        ["Week 3", "Part 5 – Grammar “điểm rơi”, collocations"],
+        ["Week 4", "Part 6,7 – đọc nhanh & logic đoạn văn"],
+        ["Week 5–6", "Mini test, Full test & giải chi tiết"]
+      ],
+      instructor: `
+        <b>Mr. Quang</b> – 990 TOEIC, 8 năm luyện thi TOEIC tại DN, HN.
+      `,
+      facts: [
+        "24 giờ học • 20 bài luyện đề",
+        "Cấp độ: Intermediate → Upper-Int",
+        "Cam kết tăng 150–200+ điểm nếu học đủ lộ trình"
+      ]
+    }),
+
+    /* 5) Speaking Mastery – Kỹ Năng Giao Tiếp */
+    "speaking-mastery": SectionHTML({
+      overview: `
+        Luyện <b>phát âm – nhấn nhá – storytelling</b> để giao tiếp tự nhiên & thuyết phục.  
+        Focus: <i>intonation, chunking, stress, connection</i>.
+      `,
+      learn: [
+        "Pronunciation chuẩn – nối âm, nuốt âm, nhấn trọng âm.",
+        "Cách kể chuyện & dẫn dắt ý – nói có mở/đỉnh/đóng.",
+        "Storytelling cho thuyết trình/meeting/pitching.",
+        "Từ vựng và cụm từ đắt giá giúp nói ‘ngầu’ & tự nhiên."
+      ],
+      suitableFor: [
+        "Người đi làm cần meeting/presentation thuyết phục.",
+        "Người đã có ngữ pháp nhưng nói thiếu màu sắc.",
+        "Người luyện IELTS Speaking 5.5–7.0."
+      ],
+      syllabus: [
+        ["Module 1", "Pronunciation & Connected Speech cơ bản"],
+        ["Module 2", "Stress – Intonation – Rhythm"],
+        ["Module 3", "Storytelling framework (STAR/SCQA)"],
+        ["Module 4", "Presenting your ideas & handling Q&A"],
+        ["Project", "Thuyết trình ngắn + feedback 1-1"]
+      ],
+      instructor: `
+        <b>Coach Linh</b> – 9 năm coaching giao tiếp doanh nghiệp, TESOL.
+      `,
+      facts: [
+        "12 buổi live • Bài tập ghi âm hàng tuần",
+        "Cấp độ: Intermediate",
+        "Tài liệu kèm phrases ‘đỉnh’ dùng ngay"
+      ]
+    }),
+
+    /* 6) Listening & Shadowing Mastery */
+    "listening-shadowing": SectionHTML({
+      overview: `
+        Kỹ thuật <b>Shadowing</b> giúp bắt chước ngữ điệu – tốc độ nói như người bản xứ,
+        đồng thời tăng khả năng bắt ý khi nghe tự nhiên.
+      `,
+      learn: [
+        "Nhận diện âm nối, âm rơi, âm yếu trong hội thoại.",
+        "Nghe – lặp song song (shadow) theo nhịp câu thật.",
+        "Tăng tốc phản xạ nói & sharpen tai nghe.",
+        "Ứng dụng: phim, podcast, meeting, thuyết trình."
+      ],
+      suitableFor: [
+        "Nghe/nói band 4.0–6.0 muốn cải thiện nhanh.",
+        "Người yêu thích TED Talks, podcasts.",
+        "Người đi làm cần nghe call/meeting hiệu quả."
+      ],
+      syllabus: [
+        ["Week 1", "Shadowing 101 – method & mindset"],
+        ["Week 2", "Linking & Reduction – luyện cụm & nhịp"],
+        ["Week 3", "Shadow theo TED/Podcasts – nâng tốc độ & rõ chữ"],
+        ["Week 4", "Ứng dụng giao tiếp công sở & thuyết trình"],
+        ["Bonus", "Bộ 25 audio chủ đề + transcript"]
+      ],
+      instructor: `
+        <b>Ms. Hương Lê</b> – TESOL Certificate, giảng viên FTU.
+      `,
+      facts: [
+        "15 giờ luyện tập • 25 audio chủ đề",
+        "Cấp độ: Pre-Intermediate → Intermediate",
+        "Record & nhận sửa phát âm chi tiết"
+      ]
+    })
+  };
+
+  /* ====== Helper tạo HTML cho mô tả chi tiết ====== */
+  function SectionHTML({overview, learn=[], suitableFor=[], syllabus=[], instructor="", facts=[]}){
+    const Li = arr => arr.map(i=>`<li>${i}</li>`).join("");
+    const Syl = syllabus.map(([title,desc]) =>
+      `<div class="p-3 rounded-lg border bg-slate-50">
+        <div class="font-semibold">${title}</div>
+        <div class="text-slate-600 text-sm">${desc}</div>
+      </div>`).join("");
+
+    return `
+      <div class="space-y-6">
+        <div>
+          <h3 class="font-bold text-xl mb-2">Giới thiệu</h3>
+          <p class="text-slate-700">${overview}</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="rounded-xl border p-4">
+            <div class="font-semibold mb-2">Bạn sẽ học được</div>
+            <ul class="list-disc ml-5 space-y-1 text-slate-700">${Li(learn)}</ul>
+          </div>
+          <div class="rounded-xl border p-4">
+            <div class="font-semibold mb-2">Phù hợp với</div>
+            <ul class="list-disc ml-5 space-y-1 text-slate-700">${Li(suitableFor)}</ul>
+          </div>
+        </div>
+
+        <div>
+          <div class="font-semibold mb-2">Lộ trình học</div>
+          <div class="grid md:grid-cols-2 gap-3">${Syl}</div>
+        </div>
+
+        <div class="rounded-xl border p-4">
+          <div class="font-semibold">Giảng viên</div>
+          <div class="text-slate-700">${instructor}</div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-3">
+          ${facts.map(f => `<div class="rounded-xl border p-4 text-sm text-slate-700 bg-white">${f}</div>`).join("")}
+        </div>
+      </div>`;
+  }
+
+  const BENEFITS = [
+    {
+      no: '01',
+      title: 'Lộ trình cá nhân hóa',
+      desc: 'Học theo mục tiêu riêng của bạn — luyện thi, giao tiếp hay chuyên ngành. Hệ thống gợi ý lộ trình phù hợp với trình độ và thời gian học.',
+      icon: iconTarget
+    },
+    {
+      no: '02',
+      title: 'Giảng viên giàu kinh nghiệm',
+      desc: 'Đội ngũ giáo viên quốc tế và chuyên gia Việt Nam với nhiều năm giảng dạy IELTS, TOEIC, và tiếng Anh ứng dụng trong công việc thực tế.',
+      icon: iconSparkles
+    },
+    {
+      no: '03',
+      title: 'Khoá học đa lĩnh vực',
+      desc: 'Từ luyện thi IELTS/TOEIC đến kỹ năng thuyết trình, viết email, tiếng Anh tài chính – bạn dễ dàng chọn đúng nội dung cần.',
+      icon: iconPuzzle
+    },
+    {
+      no: '04',
+      title: 'Nội dung luôn cập nhật',
+      desc: 'Tài liệu, ví dụ và bài tập được biên soạn bám sát xu hướng ngôn ngữ, công nghệ và môi trường làm việc hiện nay.',
+      icon: iconRefresh
+    },
+    {
+      no: '05',
+      title: 'Thực hành qua dự án thật',
+      desc: 'Mỗi khoá học đều có mini project, tình huống mô phỏng giúp bạn áp dụng kiến thức vào thực tế ngay khi học.',
+      icon: iconChat
+    },
+    {
+      no: '06',
+      title: 'Cộng đồng học viên năng động',
+      desc: 'Tham gia nhóm học và thử thách hàng tuần, kết nối cùng người học khác để trao đổi, luyện tập và duy trì động lực.',
+      icon: iconUsers
+    },
+  ];
+
+
+  // Top 6 khóa có rating cao nhất, nếu bằng nhau thì ưu tiên nhiều students hơn
+  const POPULAR = [...COURSES]
+    .filter(c => Number.isFinite(c.rating) && Number.isFinite(c.students))
+    .sort((a, b) => (b.rating - a.rating) || (b.students - a.students))
+    .slice(0, 6);
+
+  // (tuỳ chọn) gắn cờ để thêm badge "Top" khi render
+  POPULAR.forEach(c => (c.isTop = true));
+
+    const app = document.getElementById("app");
+
+    function money(n){return n.toLocaleString("vi-VN")+"₫";}
+    function parse(){return (location.hash||"#/").slice(2).split("/");}
+    window.addEventListener("hashchange", render);
+    if(!location.hash) location.hash="#/";
+
+  /* ================= BLOG DATA ================= */
+  const POSTS = [
+    {
+      id: "study-routine-ielts",
+      title: "Lập lộ trình 8 tuần chinh phục IELTS 6.5+ cho người bận rộn",
+      excerpt:
+        "Bản kế hoạch ‘thực dụng’ giúp bạn cân bằng giữa công việc và luyện thi – kèm template từng tuần & checklist tiến độ.",
+      category: "Test Prep",
+      date: "2025-01-28",
+      read: 8,
+      author: "Ms. Hannah",
+      avatar:
+        "https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=256&q=80&auto=format&fit=crop",
+      cover:
+        "https://images.unsplash.com/photo-1515378791036-0648a3ef77b2?w=1200&q=80&auto=format&fit=crop",
+      tags: ["IELTS", "Study Plan", "Time Management"],
+    },
+    {
+      id: "email-pro-tips",
+      title: "5 mẫu Email tiếng Anh lịch sự – chuẩn công sở",
+      excerpt:
+        "Tổng hợp 5 khuôn mẫu email phổ biến (đặt lịch, nhắc việc, xin cập nhật, cảm ơn, phản hồi lỗi) kèm cụm từ nên/không nên dùng.",
+      category: "Skills",
+      date: "2025-01-20",
+      read: 6,
+      author: "Coach Linh",
+      avatar:
+        "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=256&q=80&auto=format&fit=crop",
+      cover:
+        "https://images.unsplash.com/photo-1519389950473-47ba0277781c?w=1200&q=80&auto=format&fit=crop",
+      tags: ["Email", "Office", "Polite English"],
+    },
+    {
+      id: "esp-finance-phrases",
+      title: "25 cụm từ tiếng Anh tài chính – dùng ngay trong báo cáo",
+      excerpt:
+        "Bộ thuật ngữ ‘xài được liền’ cho team Finance/Banking: từ chênh lệch, dự phòng, lợi nhuận sau thuế đến outlook.",
+      category: "ESP",
+      date: "2025-01-12",
+      read: 7,
+      author: "Mr. Quang",
+      avatar:
+        "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=256&q=80&auto=format&fit=crop",
+      cover:
+        "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?w=1200&q=80&auto=format&fit=crop",
+      tags: ["Finance", "Vocabulary", "Reports"],
+    },
+    {
+      id: "pronunciation-drills",
+      title: "Sửa phát âm ‘r/d/t/th’ trong 10 phút mỗi ngày",
+      excerpt:
+        "Routine ngắn – dễ theo: warm-up, minimal pairs, shadowing & ghi âm tự chấm để tiến bộ rõ rệt sau 2 tuần.",
+      category: "Skills",
+      date: "2025-01-06",
+      read: 5,
+      author: "Coach Linh",
+      avatar:
+        "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=256&q=80&auto=format&fit=crop",
+      cover:
+        "https://images.unsplash.com/photo-1520975916090-3105956dac38?w=1200&q=80&auto=format&fit=crop",
+      tags: ["Pronunciation", "Speaking"],
+    },
+    {
+      id: "toeic-rc-hacks",
+      title: "TOEIC Reading: mẹo ‘nhanh – đúng’ cho Part 5–7",
+      excerpt:
+        "Phân loại câu hỏi, cách dò từ khóa và chiến thuật loại trừ – kèm file practice & đáp án giải thích.",
+      category: "Test Prep",
+      date: "2024-12-30",
+      read: 7,
+      author: "Mr. Quang",
+      avatar:
+        "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=256&q=80&auto=format&fit=crop",
+      cover:
+        "https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?w=1200&q=80&auto=format&fit=crop",
+      tags: ["TOEIC", "Reading"],
+    },
+    {
+      id: "it-standup-english",
+      title: "Daily Standup bằng tiếng Anh cho team IT",
+      excerpt:
+        "Template 3 câu trả lời ‘hôm qua – hôm nay – blockers’ + checklist cụm từ giúp báo cáo gọn – rõ – đủ.",
+      category: "ESP",
+      date: "2024-12-22",
+      read: 4,
+      author: "Ms. Hannah",
+      avatar:
+        "https://images.unsplash.com/photo-1607746882042-944635dfe10e?w=256&q=80&auto=format&fit=crop",
+      cover:
+        "https://images.unsplash.com/photo-1518779578993-ec3579fee39f?w=1200&q=80&auto=format&fit=crop",
+      tags: ["IT", "Scrum", "Meeting"],
+    },
+    {
+      id: "speaking-storytelling",
+      title: "Kể chuyện mạch lạc khi Speaking – khung STAR mở rộng",
+      excerpt:
+        "Dùng STAR+R để kể tình huống có nút thắt – kết giải: mở bài, phát triển, cao trào, bài học rút ra.",
+      category: "Skills",
+      date: "2024-12-10",
+      read: 6,
+      author: "Coach Linh",
+      avatar:
+        "https://images.unsplash.com/photo-1547425260-76bcadfb4f2c?w=256&q=80&auto=format&fit=crop",
+      cover:
+        "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&q=80&auto=format&fit=crop",
+      tags: ["Speaking", "Storytelling"],
+    },
+  ];
+
+  /* group counts for sidebar */
+  function groupByCategory(posts){
+    const map = {};
+    posts.forEach(p => map[p.category] = (map[p.category]||0)+1);
+    return map;
+  }
+
+    /* ===== Section Benefits ===== */
+    function BenefitsSection(){
+      return `
+      <section id="benefits" class="py-14 bg-gradient-to-b from-violet-50 to-white">
+        <div class="max-w-6xl mx-auto px-4">
+          <div class="text-center">
+            <div class="inline-flex items-center gap-2 justify-center text-violet-700 font-semibold">
+              ${iconSparkles()} <span>Why Engliverse</span>
+            </div>
+
+            <h2 class="text-3xl md:text-4xl font-extrabold mt-1">
+              <span class="text-violet-600">Benefits</span> for Learners
+            </h2>
+
+            <p class="text-slate-600 mt-2 max-w-2xl mx-auto">
+              Những ưu điểm nổi bật giúp bạn học nhanh – nhớ lâu – dùng được ngay.
+            </p>
+
+            <a href="#/courses" class="mt-4 inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-sm hover:bg-slate-50">
+              Xem khoá học
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="m9 18 6-6-6-6" stroke-width="2"/></svg>
+            </a>
+          </div>
+
+
+          <div class="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            ${BENEFITS.map(b => `
+              <div class="benefit-tilt">                 <!-- khung cho tilt -->
+                <article class="benefit-card glow group rounded-2xl border shadow-sm bg-white/80 backdrop-blur p-5 hover:shadow-md transition"
+                        tabindex="0" aria-label="${b.title}">
+                  <div class="flex items-start justify-between">
+                    <div class="inline-flex items-center justify-center h-10 w-10 rounded-lg bg-violet-100 text-violet-700">
+                      ${b.icon()}
+                    </div>
+                    <div class="benefit-num text-3xl font-black bg-gradient-to-br from-violet-600 to-fuchsia-500 bg-clip-text text-transparent">
+                      ${b.no}
+                    </div>
+                  </div>
+                  <h3 class="benefit-title mt-3 font-bold text-slate-900">${b.title}</h3>
+                  <p class="mt-1 text-slate-600 text-sm">${b.desc}</p>
+                  <div class="mt-4 h-px bg-gradient-to-r from-violet-200 to-transparent"></div>
+                  <div class="mt-3 text-violet-700 font-semibold text-sm opacity-0 group-hover:opacity-100 transition">
+                    Tìm hiểu thêm →
+                  </div>
+                </article>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </section>`;
+    }
+
+
+    function HomePage(){
+      return `
+      <!-- HERO -->
+      <section class="bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white relative overflow-hidden">
+        <!-- Canvas ngôi sao -->
+        <canvas id="hero-stars" class="absolute inset-0 w-full h-full"></canvas>
+
+        <!-- Lớp “nebula” mờ để giống dải ngân hà -->
+        <div class="pointer-events-none absolute inset-0 opacity-40 mix-blend-screen
+                    bg-[radial-gradient(900px_500px_at_15%_10%,rgba(255,255,255,0.18),transparent_60%),radial-gradient(700px_380px_at_85%_30%,rgba(255,255,255,0.14),transparent_60%),radial-gradient(600px_340px_at_40%_80%,rgba(255,255,255,0.10),transparent_60%)]">
+        </div>
+
+        <div class="relative max-w-6xl mx-auto px-4 py--1 grid md:grid-cols-2 gap-10 items-center">
+          <div>
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur text-sm">
+              <span class="opacity-90">Unlock Your English Potential</span>
+            </div>
+
+            <h1 class="mt-4 text-4xl md:text-5xl font-extrabold leading-tight">
+              Explore Your <span class="bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-100 via-violet-50 to-pink-100 animate-galaxy">Universe of English Mastery</span>
+            </h1>
+
+            <p class="mt-4 text-violet-50/90 max-w-xl">
+              Bắt đầu hành trình chinh phục tiếng Anh toàn diện — từ IELTS, TOEIC đến giao tiếp chuyên nghiệp.
+            </p>
+
+            <div class="mt-6 flex flex-wrap gap-3">
+              <a href="#/courses" class="px-4 py-2 rounded-xl bg-white text-violet-700 font-semibold">Khám phá khoá học</a>
+              <a href="#/about" class="px-4 py-2 rounded-xl border border-white/40 font-semibold">Tìm hiểu thêm</a>
+            </div>
+          </div>
+
+          <div class="relative">
+            <img  class="flex justify-center md:justify-end items-end  w-full h-[450px] object-contain object-bottom"
+              src="./home.png"
+              alt="Study" />
+          </div>
+        </div>
+      </section>
+
+      <!-- COURSES HOME -->
+       ${BenefitsSection()} 
+
+      <section class="py-12">
+        <div class="max-w-6xl mx-auto px-4">
+          <h2 class="text-3xl font-extrabold text-center mb-8">Popular <span class="text-violet-600">Courses</span></h2>
+          <div class="grid md:grid-cols-3 gap-6">
+            ${POPULAR.map(c => CourseCard(c)).join("")}
+          </div>
+        </div>
+      </section>`;
+    }
+    
+    // Bầu trời sao tĩnh + twinkle + glow
+    function startHeroStars(){
+      // tránh tạo nhiều vòng lặp khi re-render
+      if (window._heroRAF) cancelAnimationFrame(window._heroRAF);
+
+      const canvas = document.getElementById('hero-stars');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d', { alpha: true });
+      const DPR = window.devicePixelRatio || 1;
+      let W, H, stars = [];
+
+      function resize(){
+        // khớp kích thước hiển thị
+        W = canvas.clientWidth; H = canvas.clientHeight;
+        canvas.width  = Math.max(1, Math.floor(W * DPR));
+        canvas.height = Math.max(1, Math.floor(H * DPR));
+        ctx.setTransform(DPR,0,0,DPR,0,0);
+        createStars();
+      }
+
+      // Palette mềm hợp với nền tím
+      const COLORS = [
+        '#ffffff',       // trắng
+        '#F5F3FF',       // tím cực nhạt
+        '#EDE9FE',       // lavender
+        '#DDD6FE',       // tím nhạt
+        '#C4B5FD'        // violet pastel
+      ];
+
+      function rand(min, max){ return Math.random()*(max-min)+min; }
+      function pick(arr){ return arr[(Math.random()*arr.length)|0]; }
+
+    // helper: random phân phối chuẩn (Gaussian)
+    function randNormal(mean, sigma) {
+      // Box–Muller
+      let u = 1 - Math.random();
+      let v = 1 - Math.random();
+      let z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+      return mean + z * sigma;
+    }
+
+      function createStars(){
+        stars = [];
+
+        // Mật độ tổng: cao hơn, nhưng vẫn có giới hạn
+        const density = Math.min(0.0060 * W * H, 450); // tối đa ~450 sao
+        const smallN = Math.round(density * 0.75);  // 75% sao nhỏ
+        const medN   = Math.round(density * 0.22);  // 22% sao vừa
+        const bigN   = Math.max(2, Math.round(density * 0.03)); // 3% sao lớn (rất ít)
+
+        // Thông số dải ngân hà: sao sẽ tập trung quanh giữa trục Y
+        const bandCenter = H * 0.50;
+        const bandSigma  = H * 0.22;           // độ dày dải
+        const bandRatio  = 0.60;               // 60% sao rơi vào dải
+
+        const pickY = () => {
+          // 60% dùng Gaussian quanh trung tâm -> tạo “dải”
+          if (Math.random() < bandRatio) {
+            let y;
+            for (let k=0; k<6; k++) {          // tránh rơi quá xa biên
+              y = randNormal(bandCenter, bandSigma);
+              if (y >= 0 && y <= H) return y;
+            }
+            return Math.min(H, Math.max(0, y));
+          }
+          // 40% rải đều ngoài dải để bầu trời tự nhiên
+          return Math.random() * H;
+        };
+
+        // Palette violet–trắng hợp nền
+        const COLORS = ['#FFFFFF','#F5F3FF','#EDE9FE','#DDD6FE','#C4B5FD'];
+        const rand = (a,b)=>Math.random()*(b-a)+a;
+        const pick = (arr)=>arr[(Math.random()*arr.length)|0];
+
+        // small — RẤT nhiều, không glow
+        for (let i=0;i<smallN;i++){
+          stars.push({
+            x: Math.random()*W,
+            y: pickY(),
+            r: rand(0.30, 0.90),               // nhỏ hơn
+            color: pick(COLORS),
+            baseAlpha: rand(0.35, 0.75),
+            phase: Math.random()*Math.PI*2,
+            twinkle: rand(0.010, 0.025),
+            glow: 0
+          });
+        }
+
+        // medium — tăng số lượng, glow nhẹ
+        for (let i=0;i<medN;i++){
+          stars.push({
+            x: Math.random()*W,
+            y: pickY(),
+            r: rand(0.90, 0.90),               // nhỏ lại
+            color: pick(COLORS),
+            baseAlpha: rand(0.45, 0.85),
+            phase: Math.random()*Math.PI*2,
+            twinkle: rand(0.008, 0.020),
+            glow: rand(3, 6)                   // glow nhỏ
+          });
+        }
+
+        // big — rất ít, kích thước & glow giảm mạnh
+        for (let i=0;i<bigN;i++){
+          stars.push({
+            x: Math.random()*W,
+            y: pickY(),
+            r: rand(1.40, 1.40),               // nhỏ hơn trước
+            color: '#FFFFFF',
+            baseAlpha: rand(0.60, 0.95),
+            phase: Math.random()*Math.PI*2,
+            twinkle: rand(0.006, 0.016),
+            glow: rand(7, 12)                  // glow vừa phải
+          });
+        }
+      }
+
+
+      function drawStar(s, a){
+        // vẽ glow (radial gradient) cho sao vừa & lớn
+        if (s.glow > 0){
+          const g = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.glow);
+          g.addColorStop(0, `rgba(255,255,255,${0.45*a})`);
+          g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.glow, 0, Math.PI*2);
+          ctx.fill();
+        }
+        // lõi sao
+        ctx.globalAlpha = a;
+        ctx.fillStyle = s.color;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+
+      function frame(){
+        ctx.clearRect(0,0,W,H);
+        for(const s of stars){
+          // chỉ nhấp nháy, KHÔNG đổi vị trí
+          s.phase += s.twinkle;
+          const a = s.baseAlpha * (0.65 + 0.35*Math.sin(s.phase)); // 0.65–1.0 * base
+          drawStar(s, a);
+        }
+        window._heroRAF = requestAnimationFrame(frame);
+      }
+
+      resize();
+      window.addEventListener('resize', resize, { passive: true });
+      frame();
+    }
+    /* ================= BLOG LIST PAGE ================= */
+    function BlogPage(){
+      const cats = groupByCategory(POSTS);
+      const featured = POSTS.slice(0,3);          // 1 featured lớn + 2 phụ
+      const rest = POSTS.slice(3);                // các bài còn lại
+
+      return `
+      <section class="bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white py-14">
+        <div class="max-w-6xl mx-auto px-4">
+          <h1 class="text-3xl md:text-4xl font-extrabold">Engliverse Blog</h1>
+          <p class="mt-2 text-violet-100 max-w-2xl">Mẹo học thông minh, kỹ năng công sở & tiếng Anh chuyên ngành – cập nhật mỗi tuần.</p>
+          <div class="mt-6 max-w-xl">
+            <div class="flex items-center bg-white/10 backdrop-blur rounded-xl px-3 py-2">
+              ${iconSearch()}
+              <input id="blog-search" class="bg-transparent outline-none flex-1 px-2 placeholder:violet-100 text-white" placeholder="Tìm bài viết (IELTS, Email, Finance, ...)" />
+              <button class="px-3 py-1.5 rounded-lg bg-white text-violet-700 font-semibold" onclick="alert('Demo search')">Search</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="py-10">
+        <div class="max-w-6xl mx-auto px-4">
+
+          <!-- Featured khớp chiều ngang 8/12 -->
+          <div class="grid md:grid-cols-12 gap-6">
+            <!-- cột nội dung chính (8/12) -->
+            <div class="md:col-span-8">
+              <div class="grid gap-6">
+                <!-- Featured chính -->
+                ${FeaturedMain(featured[0])}
+                <!-- 2 featured phụ -->
+                <div class="grid md:grid-cols-2 gap-6">
+                  ${featured.slice(1).map(FeaturedSmall).join("")}
+                </div>
+              </div>
+            </div>
+            <!-- chừa 4 cột (để canh đúng với sidebar bên dưới) -->
+            <div class="hidden md:block md:col-span-4"></div>
+          </div>
+
+          <!-- Phần dưới: Main list + Sidebar -->
+          <div class="mt-10 grid md:grid-cols-12 gap-6">
+            <!-- Main list (8/12) -->
+            <div class="md:col-span-8">
+              <div class="space-y-8">
+                ${rest.map(CardPost).join("")}
+              </div>
+              <div class="mt-8">
+                ${Pagination()}
+              </div>
+            </div>
+
+            <!-- Sidebar (4/12) -->
+            <aside class="md:col-span-4 space-y-6">
+              ${SideCategories(cats)}
+              ${SideTrending(POSTS.slice(0,4))}
+              ${SideNewsletter()}
+              ${SideTags(["IELTS","TOEIC","Finance","Email","Pronunciation","Speaking","IT","Meeting"])}
+            </aside>
+          </div>
+        </div>
+      </section>`;
+    }
+
+    /* ======= building blocks ======= */
+    function FeaturedMain(p){
+      return `
+      <article class="rounded-2xl overflow-hidden border shadow-sm">
+        <a href="#/blog/${p.id}" class="block ar-16-9 overflow-hidden">
+          <img src="${p.cover}" alt="${p.title}" class="w-full h-full object-cover">
+        </a>
+        <div class="p-5">
+          <div class="text-sm font-semibold text-violet-700">${p.category}</div>
+          <a href="#/blog/${p.id}" class="block mt-1 text-xl font-extrabold hover:text-violet-700">${p.title}</a>
+          <p class="text-slate-700 mt-2 line-3">${p.excerpt}</p>
+          ${MetaRow(p)}
+        </div>
+      </article>`;
+    }
+
+    function FeaturedSmall(p){
+      return `
+      <article class="rounded-2xl overflow-hidden border shadow-sm">
+        <a href="#/blog/${p.id}" class="block ar-16-9 overflow-hidden">
+          <img src="${p.cover}" alt="${p.title}" class="w-full h-full object-cover">
+        </a>
+        <div class="p-5">
+          <div class="text-sm font-semibold text-violet-700">${p.category}</div>
+          <a href="#/blog/${p.id}" class="block mt-1 font-bold hover:text-violet-700 line-2">${p.title}</a>
+          ${MetaRow(p)}
+        </div>
+      </article>`;
+    }
+
+    function CardPost(p){
+      return `
+      <article class="rounded-2xl overflow-hidden border shadow-sm md:grid md:grid-cols-5">
+        <a href="#/blog/${p.id}" class="md:col-span-2">
+          <img src="${p.cover}" class="h-48 w-full object-cover md:h-full">
+        </a>
+        <div class="p-5 md:col-span-3">
+          <div class="text-xs uppercase tracking-wide text-violet-700 font-semibold">${p.category}</div>
+          <a href="#/blog/${p.id}" class="block mt-1 text-lg font-bold hover:text-violet-700 line-2">${p.title}</a>
+          <p class="text-slate-700 mt-2 line-3">${p.excerpt}</p>
+          ${MetaRow(p)}
+        </div>
+      </article>`;
+    }
+    function MetaRow(p){
+      return `
+      <div class="mt-3 flex items-center gap-4 text-sm text-slate-500">
+        <span class="inline-flex items-center gap-1">${iconClock()} ${p.read} min</span>
+        <span class="inline-flex items-center gap-1">${iconCalendar()} ${formatDate(p.date)}</span>
+        <span class="inline-flex items-center gap-2 ml-auto">
+          <img src="${p.avatar}" class="h-6 w-6 rounded-full"> ${p.author}
+        </span>
+      </div>`;
+    }
+    function SideCategories(map){
+      return `
+      <div class="rounded-2xl border p-5 shadow-sm">
+        <h3 class="font-bold mb-3">Categories</h3>
+        <ul class="space-y-2">
+          ${Object.keys(map).map(k => `
+          <li class="flex items-center justify-between">
+            <span class="inline-flex items-center gap-2">${iconFolder()} ${k}</span>
+            <span class="text-slate-500">${map[k]}</span>
+          </li>`).join("")}
+        </ul>
+      </div>`;
+    }
+    function SideTrending(list){
+      return `
+      <div class="rounded-2xl border p-5 shadow-sm">
+        <h3 class="font-bold mb-3">Trending</h3>
+        <div class="space-y-4">
+          ${list.map(p => `
+            <a href="#/blog/${p.id}" class="flex items-center gap-3 group">
+              <img src="${p.cover}" class="h-14 w-20 object-cover rounded-md">
+              <div class="text-sm">
+                <div class="font-semibold group-hover:text-violet-700 line-2">${p.title}</div>
+                <div class="text-slate-500 text-xs mt-0.5 inline-flex items-center gap-1">${iconClock()} ${p.read} min</div>
+              </div>
+            </a>
+          `).join("")}
+        </div>
+      </div>`;
+    }
+    function SideNewsletter(){
+      return `
+      <div class="rounded-2xl border p-5 shadow-sm">
+        <h3 class="font-bold mb-2">Bản tin học tập</h3>
+        <p class="text-slate-600 text-sm">Nhận mẹo học & tài liệu mẫu mỗi tuần – hoàn toàn miễn phí.</p>
+        <div class="mt-3 flex items-center gap-2">
+          ${iconMail()}
+          <input class="flex-1 rounded-md border px-3 py-2" placeholder="Email của bạn">
+        </div>
+        <button class="mt-3 w-full rounded-xl bg-violet-600 text-white py-2 font-semibold" onclick="alert('Cảm ơn bạn!')">Subscribe</button>
+      </div>`;
+    }
+    function SideTags(tags){
+      return `
+      <div class="rounded-2xl border p-5 shadow-sm">
+        <h3 class="font-bold mb-3">Tags</h3>
+        <div class="flex flex-wrap gap-2">
+          ${tags.map(t => `<a class="px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm hover:bg-slate-200">#${t}</a>`).join("")}
+        </div>
+      </div>`;
+    }
+    function Pagination(){
+      return `
+      <div class="flex items-center justify-center gap-2 pt-4">
+        <button class="px-3 py-1.5 rounded-md border">${iconArrowLeft()} Prev</button>
+        <button class="px-3 py-1.5 rounded-md bg-violet-600 text-white">1</button>
+        <button class="px-3 py-1.5 rounded-md border">2</button>
+        <button class="px-3 py-1.5 rounded-md border">3</button>
+        <button class="px-3 py-1.5 rounded-md border">Next ${iconArrowRight()}</button>
+      </div>`;
+    }
+
+        /* ================= BLOG DETAIL ================= */
+    function BlogDetailPage(id){
+      const p = POSTS.find(x => x.id === id);
+      if(!p) return `<div class="max-w-3xl mx-auto px-4 py-16 text-center">Bài viết không tồn tại.</div>`;
+
+      return `
+      <article>
+        <section class="bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white">
+          <div class="max-w-4xl mx-auto px-4 py-12">
+            <a href="#/blog" class="inline-flex items-center gap-1 text-violet-100 hover:text-white mb-4">${iconArrowLeft()} Quay lại Blog</a>
+            <div class="text-sm font-semibold text-violet-100">${p.category}</div>
+            <h1 class="text-3xl md:text-4xl font-extrabold mt-1">${p.title}</h1>
+            <div class="mt-3 flex items-center gap-4 text-violet-100">
+              <span class="inline-flex items-center gap-1">${iconCalendar()} ${formatDate(p.date)}</span>
+              <span class="inline-flex items-center gap-1">${iconClock()} ${p.read} min</span>
+              <span class="inline-flex items-center gap-2 ml-auto">
+                <img src="${p.avatar}" class="h-7 w-7 rounded-full"> ${p.author}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section class="py-8">
+          <div class="max-w-4xl mx-auto px-4">
+            <img src="${p.cover}" class="rounded-2xl w-full h-80 object-cover">
+            <div class="prose prose-slate max-w-none mt-6">
+              <p class="lead">${p.excerpt}</p>
+              <h2>1) Bối cảnh & mục tiêu</h2>
+              <p>Đây là phiên bản demo nội dung. Bạn có thể thay bằng markdown/HTML thật của bài viết. Phần này mô tả vấn đề, mục tiêu và đối tượng.</p>
+              <h2>2) Checklist / Template</h2>
+              <ul>
+                <li>Các bước thực hiện cụ thể</li>
+                <li>Mẹo, lưu ý và lỗi thường gặp</li>
+                <li>File mẫu / bài tập gợi ý</li>
+              </ul>
+              <h2>3) Kết luận</h2>
+              <p>Tóm tắt 3 điểm chính, CTA đến khóa học liên quan hoặc bài viết tiếp theo.</p>
+            </div>
+
+            <div class="mt-8 flex items-center gap-2">
+              ${p.tags.map(t => `<span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-sm">#${t}</span>`).join("")}
+            </div>
+
+            <div class="mt-10 rounded-2xl border p-5 flex items-center justify-between">
+              <div class="font-semibold">Chia sẻ bài viết</div>
+              <div class="flex items-center gap-3 text-slate-600">
+                ${iconShare()} ${iconLink()}
+              </div>
+            </div>
+          </div>
+        </section>
+      </article>`;
+    }
+
+
+    function CourseCard(c){
+      return `
+      <div class="group border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition bg-white">
+        <a href="#/course/${c.id}">
+          <div class="relative">
+            <img src="${c.img}" class="h-44 w-full object-cover" alt="${c.title}">
+            <div class="absolute top-2 left-2 px-2 py-0.5 rounded-md text-xs font-semibold
+                        ${c.cat==='testprep' ? 'bg-amber-100 text-amber-700'
+                        : c.cat==='skills'   ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-sky-100 text-sky-700'}">
+              ${c.cat==='testprep'?'Test-prep':c.cat==='skills'?'Skills':'ESP'}
+            </div>
+          </div>
+        </a>
+        <div class="p-5">
+          <div class="text-xs text-slate-500">${c.tag} • ${c.duration}</div>
+          <h3 class="font-semibold mt-1 leading-snug line-clamp-2">${c.title}</h3>
+          <div class="mt-1 text-sm text-slate-500">★ ${c.rating} • ${c.students.toLocaleString()} học viên</div>
+
+          <div class="mt-3 flex flex-wrap gap-2 text-[11px]">
+            <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700">${c.level}</span>
+            <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700">${c.format}</span>
+          </div>
+
+          <div class="mt-4 flex items-center justify-between">
+            <div class="font-bold text-violet-700">${money(c.price)}</div>
+            <a href="#/course/${c.id}" class="px-3 py-1.5 bg-violet-600 text-white rounded-md text-sm">
+              Xem chi tiết
+            </a>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    const COURSE_CATS = {
+      all: 'Tất cả',
+      testprep: 'Luyện thi',
+      skills: 'Kỹ năng',
+      esp: 'Chuyên ngành',
+    };
+
+    const LEVELS = [
+      {v:'', label:'Tất cả cấp độ'},
+      {v:'beginner', label:'Beginner'},
+      {v:'elementary', label:'Elementary (A2)'},
+      {v:'intermediate', label:'Intermediate (B1)'},
+      {v:'upper', label:'Upper (B2+)'},
+    ];
+
+    const FORMATS = [
+      {v:'', label:'Tất cả định dạng'},
+      {v:'self-paced', label:'Tự học (video)'},
+      {v:'cohort', label:'Theo lộ trình (cohort)'},
+      {v:'live-1vN', label:'Lớp live nhóm nhỏ'},
+      {v:'live-1v1', label:'Kèm riêng 1-1'},
+    ];
+
+    function CoursesPage(tab='all'){
+      const safeTab = ['all','testprep','skills','esp'].includes(tab) ? tab : 'all';
+      // đếm số lượng theo cat
+      const counts = COURSES.reduce((m,c)=>{
+        m.all++; m[c.cat]=(m[c.cat]||0)+1; return m;
+      }, {all:0});
+
+      return `
+      <section class="py-10">
+        <div class="max-w-6xl mx-auto px-4">
+          <h1 class="text-3xl font-extrabold mb-6">Khoá học</h1>
+
+          <!-- Tabs -->
+          <div class="flex flex-wrap gap-2 mb-6" id="course-tabs">
+            ${Object.keys(COURSE_CATS).map(k=>`
+              <a href="#/courses/${k}"
+                data-tab="${k}"
+                class="px-3 py-1.5 rounded-lg border text-sm
+                        ${k===safeTab?'bg-violet-600 text-white border-violet-600':'bg-white hover:bg-slate-50'}">
+                ${COURSE_CATS[k]} <span class="ml-1 text-xs text-slate-500">(${counts[k]||0})</span>
+              </a>
+            `).join('')}
+          </div>
+
+          <!-- Filters -->
+          <div class="grid md:grid-cols-4 gap-3 mb-6">
+            <div class="md:col-span-2">
+              <input id="course-q" placeholder="Tìm kiếm khóa học, từ khóa…" 
+                    class="w-full border rounded-lg px-3 py-2" />
+            </div>
+            <select id="course-level" class="border rounded-lg px-3 py-2">
+              ${LEVELS.map(o=>`<option value="${o.v}">${o.label}</option>`).join('')}
+            </select>
+            <select id="course-format" class="border rounded-lg px-3 py-2">
+              ${FORMATS.map(o=>`<option value="${o.v}">${o.label}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Sort -->
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-sm text-slate-500" id="course-count"></div>
+            <select id="course-sort" class="border rounded-lg px-3 py-2 text-sm">
+              <option value="pop">Phổ biến nhất</option>
+              <option value="price-asc">Giá thấp → cao</option>
+              <option value="price-desc">Giá cao → thấp</option>
+              <option value="rating">Đánh giá cao</option>
+            </select>
+          </div>
+
+          <!-- List -->
+          <div id="course-list" class="grid md:grid-cols-3 gap-6"></div>
+        </div>
+      </section>`;
+    }
+
+    function attachCoursesHandlers(tab='all'){
+      const qEl = document.getElementById('course-q');
+      const lvEl = document.getElementById('course-level');
+      const fmEl = document.getElementById('course-format');
+      const sortEl = document.getElementById('course-sort');
+      const listEl = document.getElementById('course-list');
+      const countEl = document.getElementById('course-count');
+
+      // state
+      let state = {
+        tab: ['all','testprep','skills','esp'].includes(tab)?tab:'all',
+        q:'', level:'', format:'', sort:'pop'
+      };
+
+      function apply(){
+        let arr = COURSES.slice();
+
+        if(state.tab!=='all') arr = arr.filter(c=>c.cat===state.tab);
+
+        if(state.q){
+          const t = state.q.toLowerCase();
+          arr = arr.filter(c =>
+            (c.title+c.tag+c.intro+c.author).toLowerCase().includes(t));
+        }
+        if(state.level)  arr = arr.filter(c => (c.level||'')===state.level);
+        if(state.format) arr = arr.filter(c => (c.format||'')===state.format);
+
+        // sort
+        if(state.sort==='price-asc') arr.sort((a,b)=>a.price-b.price);
+        else if(state.sort==='price-desc') arr.sort((a,b)=>b.price-a.price);
+        else if(state.sort==='rating') arr.sort((a,b)=>b.rating-a.rating);
+        else /* pop */ arr.sort((a,b)=>b.students-a.students);
+
+        countEl.textContent = `${arr.length} khóa học`;
+        listEl.innerHTML = arr.map(CourseCard).join('');
+      }
+
+      // listeners
+      qEl?.addEventListener('input', (e)=>{ state.q = e.target.value.trim(); apply(); });
+      lvEl?.addEventListener('change', (e)=>{ state.level = e.target.value; apply(); });
+      fmEl?.addEventListener('change', (e)=>{ state.format = e.target.value; apply(); });
+      sortEl?.addEventListener('change', (e)=>{ state.sort = e.target.value; apply(); });
+
+      // set active tab style (đã có href #/courses/<tab> nên không cần JS đổi hash)
+      document.querySelectorAll('#course-tabs a').forEach(a=>{
+        const active = a.dataset.tab===state.tab;
+        a.classList.toggle('bg-violet-600', active);
+        a.classList.toggle('text-white', active);
+        a.classList.toggle('border-violet-600', active);
+      });
+
+      apply();
+    }
+
+  const SAMPLE_REVIEWS = {
+    // ví dụ courseId: 'speaking-club-plus'
+    'speaking-club-plus': [
+      {
+        name: 'Nguyễn Minh Anh',
+        role: 'Nhân viên Marketing',
+        rating: 5,
+        comment: 'Engliverse đã giúp tôi tự tin giao tiếp với khách hàng quốc tế. Giáo viên nhiệt tình, nội dung phong phú.',
+        date: '03/2025'
+      },
+      {
+        name: 'Trần Hoàng Long',
+        role: 'Sinh viên',
+        rating: 5,
+        comment: 'Sau 6 tháng học mình đạt IELTS 7.5. Phương pháp học hiệu quả và dễ theo.',
+        date: '02/2025'
+      }
+    ],
+
+    // ví dụ courseId: 'ielts-7-plus'
+    'ielts-7-plus': [
+      {
+        name: 'Lê Thu Hương',
+        role: 'Kế toán',
+        rating: 4,
+        comment: 'Lộ trình rõ ràng, bài tập hợp lý. Rất phù hợp cho người đi làm.',
+        date: '04/2025'
+      }
+    ],
+
+    // mặc định nếu chưa có dữ liệu riêng cho courseId
+    _default: [
+      {
+        name: 'Phạm Văn Đức',
+        role: 'Giám đốc Kinh doanh',
+        rating: 5,
+        comment: 'Chương trình thực chiến, áp dụng ngay vào công việc. Đáng tiền!',
+        date: '03/2025'
+      },
+      {
+        name: 'Võ Minh Tuấn',
+        role: 'Lập trình viên',
+        rating: 4,
+        comment: 'Nội dung cập nhật, sát xu hướng. Giảng viên hỗ trợ tốt.',
+        date: '01/2025'
+      }
+    ]
+  };
+
+  function stars(n){ return '★'.repeat(n) + '☆'.repeat(5-n); }
+
+  /* Hàm bạn đang gọi trong CourseDetailPage */
+  function renderReviews(courseId){
+    const mount = document.getElementById('reviews-mount');
+    if(!mount) return;
+
+    const list = SAMPLE_REVIEWS[courseId] || SAMPLE_REVIEWS._default;
+    const avg = list.length ? (list.reduce((s,r)=>s+(r.rating||0),0)/list.length).toFixed(1) : 'Chưa có';
+
+    mount.innerHTML = `
+      <div class="mt-8">
+        <h3 class="text-xl font-bold mb-1">Đánh giá khoá học</h3>
+        <div class="text-sm text-slate-600 mb-4">
+          Trung bình: <b class="text-violet-700">${avg}</b> / 5 • ${list.length} đánh giá
+        </div>
+
+        <!-- Form demo: không lưu -->
+        <div class="rounded-2xl border p-5 bg-white/80 shadow-sm">
+          <div class="text-sm text-slate-600 mb-1">Chấm điểm của bạn</div>
+          <div id="demo-stars" class="flex gap-1 mb-3">
+            ${[1,2,3,4,5].map(i=>`
+              <button data-s="${i}" class="h-9 w-9 rounded-full border grid place-items-center text-xl">☆</button>
+            `).join('')}
+          </div>
+          <textarea class="w-full border rounded-lg px-3 py-2" rows="3"
+            placeholder="Ý kiến của bạn (demo – không lưu)..."></textarea>
+          <button id="demo-send" class="mt-2 px-4 py-2 rounded-lg bg-violet-600 text-white font-semibold">
+            Gửi đánh giá (demo)
+          </button>
+          <div id="demo-msg" class="text-sm text-slate-500 mt-1">
+            Đây là bản demo – nội dung sẽ không được lưu.
+          </div>
+        </div>
+
+        <!-- Danh sách review mẫu -->
+        <div class="mt-6 grid md:grid-cols-2 gap-4">
+          ${list.map(r=>`
+            <div class="rounded-xl border p-4 bg-white">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-semibold">${escapeHtml(r.name)}</div>
+                  <div class="text-xs text-slate-500">${escapeHtml(r.role||'')}</div>
+                </div>
+                <div class="text-xs text-slate-500">${escapeHtml(r.date||'')}</div>
+              </div>
+              <div class="mt-1 text-amber-500">${stars(r.rating||0)}</div>
+              <div class="mt-1 text-slate-700 whitespace-pre-line">${escapeHtml(r.comment||'')}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    // Tô sao (demo)
+    const btns = mount.querySelectorAll('#demo-stars button');
+    let cur = 0;
+    const paint = (n)=>{
+      btns.forEach((b,i)=>{
+        b.textContent = i < n ? '★' : '☆';
+        b.classList.toggle('bg-yellow-50', i < n);
+        b.classList.toggle('border-yellow-300', i < n);
+      });
+    };
+    btns.forEach(b=>{
+      b.addEventListener('mouseenter', ()=>paint(Number(b.dataset.s)));
+      b.addEventListener('mouseleave', ()=>paint(cur));
+      b.addEventListener('click', ()=>{ cur = Number(b.dataset.s); paint(cur); });
+    });
+
+    // Nút gửi (demo)
+    const msg = mount.querySelector('#demo-msg');
+    mount.querySelector('#demo-send').addEventListener('click', ()=>{
+      msg.textContent = 'Cảm ơn bạn! (demo — đánh giá không được lưu).';
+    });
+  }
+
+  /* chống XSS khi in text demo */
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'",'&#39;');
+  }
+
+    function CourseDetailPage(courseId){
+      const c = findCourseById(courseId);
+      if(!c){
+        return `<section class="py-16 text-center text-lg">Không tìm thấy khoá học</section>`;
+      }
+
+      const detailHTML = COURSE_DETAILS[c.id] || `
+        <div class="rounded-xl border p-5 bg-white">
+          <h3 class="font-bold text-xl">Thông tin khoá học</h3>
+          <p class="text-slate-600 mt-1">Nội dung đang được cập nhật.</p>
+        </div>`;
+
+      // -> tạo HTML trước
+      const html = `
+        <section class="py-10 bg-gradient-to-b from-violet-50 to-white">
+          <div class="max-w-6xl mx-auto px-4">
+            <div class="grid md:grid-cols-3 gap-6">
+              <!-- Trái: ảnh + mô tả -->
+              <div class="md:col-span-2 space-y-6">
+                <img src="${c.img}" alt="${c.title}" class="rounded-xl w-full object-cover shadow" />
+                ${detailHTML}
+
+                <!-- VÙNG REVIEWS -->
+                <div id="reviews-mount"></div>
+              </div>
+
+              <!-- Phải: box giá + CTA -->
+              <aside class="rounded-xl border p-5 shadow-sm bg-white h-fit sticky top-20">
+                <div class="text-3xl font-extrabold text-violet-700">${formatMoneyVND(c.price||0)}</div>
+                <div class="mt-4 grid gap-2">
+                  <button class="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-700 text-white font-semibold"
+                          onclick="buyNow('${c.id}')">Tham gia ngay</button>
+                  <button class="px-4 py-2 rounded-xl border" onclick="addToCart('${c.id}')">+ Thêm vào giỏ</button>
+                </div>
+                ${c.author ? `<div class="mt-4 text-sm text-slate-600">Giảng viên: <b>${c.author}</b></div>` : ``}
+                <div class="mt-3 text-sm text-slate-500">Bảo vệ thanh toán bởi Engliverse</div>
+              </aside>
+            </div>
+          </div>
+        </section>
+      `;
+
+      // -> gọi sau khi router đã gán vào DOM
+      setTimeout(() => renderReviews(c.id), 0);
+      return html;
+    }
+
+    function AboutPage(){
+      return `
+      <section class="py-12">
+        <div class="max-w-6xl mx-auto px-4">
+          <!-- Hero -->
+          <div class="md:flex items-start gap-10">
+            <div class="md:w-3/5">
+              <h1 class="text-3xl md:text-4xl font-extrabold mb-4">
+                About <span class="text-violet-700">Engliverse</span>
+              </h1>
+              <p class="text-slate-700 leading-relaxed max-w-3xl">
+                Engliverse là hệ sinh thái khóa học tiếng Anh toàn diện dành cho người Việt – từ
+                <strong>luyện thi chứng chỉ</strong> (IELTS/TOEIC/TOEFL), <strong>kỹ năng giao tiếp – công sở</strong> đến
+                <strong>tiếng Anh chuyên ngành (ESP)</strong>. Sứ mệnh của chúng tôi là giúp bạn
+                <em>học tiếng Anh để làm – không chỉ để thi</em>, thông qua lộ trình cá nhân hóa, nội dung tinh gọn, và
+                hỗ trợ 1–1 từ đội ngũ giảng viên giàu kinh nghiệm.
+              </p>
+            </div>
+            <div class="md:w-2/5 mt-8 md:mt-0">
+              <div class="grid grid-cols-3 gap-3">
+                <div class="rounded-2xl border p-4 text-center shadow-sm">
+                  <div class="text-2xl font-extrabold text-violet-700">25k+</div>
+                  <div class="text-sm text-slate-600">Học viên</div>
+                </div>
+                <div class="rounded-2xl border p-4 text-center shadow-sm">
+                  <div class="text-2xl font-extrabold text-violet-700">320+</div>
+                  <div class="text-sm text-slate-600">Bài học chất lượng</div>
+                </div>
+                <div class="rounded-2xl border p-4 text-center shadow-sm">
+                  <div class="text-2xl font-extrabold text-violet-700">4.9/5</div>
+                  <div class="text-sm text-slate-600">Đánh giá trung bình</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sứ mệnh - Tầm nhìn - Giá trị -->
+          <div class="mt-12 grid md:grid-cols-3 gap-6">
+            <div class="rounded-2xl border p-6 shadow-sm">
+              <h3 class="font-bold mb-2">Sứ mệnh</h3>
+              <p class="text-slate-700">
+                Trao quyền cho người học Việt Nam làm chủ tiếng Anh để học tập, làm việc và thăng tiến nghề nghiệp trong môi trường toàn cầu.
+              </p>
+            </div>
+            <div class="rounded-2xl border p-6 shadow-sm">
+              <h3 class="font-bold mb-2">Tầm nhìn</h3>
+              <p class="text-slate-700">
+                Trở thành nền tảng học tiếng Anh ứng dụng hàng đầu khu vực, với lộ trình cá nhân hóa theo mục tiêu và ngành nghề.
+              </p>
+            </div>
+            <div class="rounded-2xl border p-6 shadow-sm">
+              <h3 class="font-bold mb-2">Giá trị cốt lõi</h3>
+              <ul class="text-slate-700 list-disc pl-5 space-y-1">
+                <li>Thực chiến & đo được kết quả</li>
+                <li>Cá nhân hóa & đồng hành 1–1</li>
+                <li>Minh bạch – đơn giản – hiệu quả</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Vì sao chọn Engliverse -->
+          <div class="mt-12">
+            <h2 class="text-2xl font-extrabold mb-4">Vì sao chọn Engliverse?</h2>
+            <div class="grid md:grid-cols-2 gap-6">
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <h3 class="font-semibold mb-2">Lộ trình cá nhân hóa theo mục tiêu</h3>
+                <p class="text-slate-700">
+                  Chọn mục tiêu (IELTS/TOEIC/Giao tiếp/Công sở/Chuyên ngành), làm bài đánh giá nhanh (placement), hệ thống gợi ý lộ trình và bộ khóa học phù hợp.
+                </p>
+              </div>
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <h3 class="font-semibold mb-2">Kết hợp luyện thi – kỹ năng – chuyên ngành</h3>
+                <p class="text-slate-700">
+                  Không chỉ ôn thi lấy chứng chỉ, bạn còn <em>học để dùng</em> trong công việc qua email, thuyết trình, đàm phán… và ESP theo ngành (IT/Finance/Marketing…).
+                </p>
+              </div>
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <h3 class="font-semibold mb-2">Tương tác & mentor 1–1</h3>
+                <p class="text-slate-700">
+                  Lớp live ngắn – gọn – tập trung, feedback cá nhân hóa cho Speaking/Writing, nhóm học nhỏ hoặc 1–1 theo nhu cầu.
+                </p>
+              </div>
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <h3 class="font-semibold mb-2">Cam kết tiến bộ đo lường được</h3>
+                <p class="text-slate-700">
+                  Theo dõi tiến độ – bài kiểm tra định kỳ – tiêu chí rõ ràng theo band/level/kỹ năng. Học thực – đo thực – cải thiện thực.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hệ sinh thái khóa học -->
+          <div class="mt-12">
+            <h2 class="text-2xl font-extrabold mb-4">Hệ sinh thái khóa học</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <div class="text-sm uppercase tracking-wide text-violet-700 font-semibold">Test Preparation</div>
+                <h3 class="font-bold mt-1">Luyện thi chứng chỉ</h3>
+                <ul class="mt-2 text-slate-700 list-disc pl-5 space-y-1">
+                  <li>IELTS Academic/General • TOEIC 4 kỹ năng • TOEFL/VSTEP</li>
+                  <li>Lộ trình theo band • đề mô phỏng • chấm bài chi tiết</li>
+                </ul>
+                <a href="#/courses" class="inline-block mt-3 text-violet-700 font-semibold">Khám phá &rarr;</a>
+              </div>
+
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <div class="text-sm uppercase tracking-wide text-violet-700 font-semibold">Skill-Based</div>
+                <h3 class="font-bold mt-1">Kỹ năng giao tiếp – công sở</h3>
+                <ul class="mt-2 text-slate-700 list-disc pl-5 space-y-1">
+                  <li>Giao tiếp phản xạ, phát âm – ngữ điệu</li>
+                  <li>Email, thuyết trình, họp, đàm phán bằng tiếng Anh</li>
+                </ul>
+                <a href="#/courses" class="inline-block mt-3 text-violet-700 font-semibold">Xem khóa phù hợp &rarr;</a>
+              </div>
+
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <div class="text-sm uppercase tracking-wide text-violet-700 font-semibold">ESP</div>
+                <h3 class="font-bold mt-1">Tiếng Anh chuyên ngành</h3>
+                <ul class="mt-2 text-slate-700 list-disc pl-5 space-y-1">
+                  <li>IT/Software • Finance/Banking • Marketing • Healthcare…</li>
+                  <li>Thuật ngữ – case thật – tình huống công việc</li>
+                </ul>
+                <a href="#/courses" class="inline-block mt-3 text-violet-700 font-semibold">Bắt đầu ngay &rarr;</a>
+              </div>
+            </div>
+          </div>
+
+          <!-- Phương pháp & Công nghệ -->
+          <div class="mt-12 grid md:grid-cols-2 gap-6">
+            <div class="rounded-2xl border p-6 shadow-sm">
+              <h3 class="font-bold mb-2">Phương pháp học</h3>
+              <ul class="text-slate-700 list-disc pl-5 space-y-1">
+                <li><strong>Active Learning</strong>: thực hành – phản hồi – cải thiện</li>
+                <li><strong>Microlearning</strong>: bài học ngắn, mục tiêu rõ ràng</li>
+                <li><strong>Task-based</strong>: mô phỏng tình huống thực tế</li>
+                <li><strong>Assessment</strong> định kỳ theo band/CEFR</li>
+              </ul>
+            </div>
+            <div class="rounded-2xl border p-6 shadow-sm">
+              <h3 class="font-bold mb-2">Nền tảng & công cụ</h3>
+              <ul class="text-slate-700 list-disc pl-5 space-y-1">
+                <li>LMS theo dõi tiến độ, quiz & bài nộp</li>
+                <li>Phòng học live tương tác • record – playback</li>
+                <li>Template email/thuyết trình • thư viện từ vựng theo ngành</li>
+                <li>Cộng đồng học tập – thử thách hàng tuần</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Lộ trình học -->
+          <div class="mt-12">
+            <h2 class="text-2xl font-extrabold mb-4">Lộ trình học tiêu chuẩn</h2>
+            <div class="grid md:grid-cols-4 gap-6">
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <div class="text-violet-700 font-semibold">01 • Khởi động</div>
+                <p class="text-slate-700 mt-2">Đánh giá trình độ – xác định mục tiêu – tư vấn lộ trình.</p>
+              </div>
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <div class="text-violet-700 font-semibold">02 • Nền tảng</div>
+                <p class="text-slate-700 mt-2">Củng cố ngữ âm – ngữ pháp – từ vựng theo mục tiêu.</p>
+              </div>
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <div class="text-violet-700 font-semibold">03 • Ứng dụng</div>
+                <p class="text-slate-700 mt-2">Bài tập tình huống, phản hồi 1–1, mô phỏng đề thi/công việc.</p>
+              </div>
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <div class="text-violet-700 font-semibold">04 • Về đích</div>
+                <p class="text-slate-700 mt-2">Đánh giá tiến bộ, đề xuất chặng tiếp theo & tài nguyên nâng cao.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Testimonials ngắn -->
+          <div class="mt-12">
+            <h2 class="text-2xl font-extrabold mb-4">Học viên nói gì?</h2>
+            <div class="grid md:grid-cols-3 gap-6">
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <p class="text-slate-700 italic">“Nhờ lộ trình cá nhân hóa mình lên IELTS 7.0 sau 12 tuần. Feedback Writing cực chi tiết.”</p>
+                <div class="mt-3 text-sm text-slate-500">Minh Anh – IELTS 7.0</div>
+              </div>
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <p class="text-slate-700 italic">“Các lớp speaking ngắn mà hiệu quả, dùng được ngay trong họp khách hàng.”</p>
+                <div class="mt-3 text-sm text-slate-500">Quốc Huy – Sales Executive</div>
+              </div>
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <p class="text-slate-700 italic">“Khóa ESP Finance đúng thứ mình cần: thuật ngữ + case thực tế, thuyết trình tự tin hơn.”</p>
+                <div class="mt-3 text-sm text-slate-500">Lan Phương – Banking</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- FAQ ngắn -->
+          <div class="mt-12">
+            <h2 class="text-2xl font-extrabold mb-4">Câu hỏi thường gặp</h2>
+            <div class="grid md:grid-cols-2 gap-6">
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <h3 class="font-semibold">Tôi nên bắt đầu từ khóa nào?</h3>
+                <p class="text-slate-700 mt-1">
+                  Hãy bắt đầu bằng bài <em>placement</em> (đánh giá nhanh) và chọn mục tiêu. Hệ thống sẽ gợi ý lộ trình & khóa phù hợp.
+                </p>
+              </div>
+              <div class="rounded-2xl border p-6 shadow-sm">
+                <h3 class="font-semibold">Có lớp live và hỗ trợ 1–1 không?</h3>
+                <p class="text-slate-700 mt-1">
+                  Có. Bạn có thể chọn gói mentor 1–1, chấm Speaking/Writing và lớp live nhóm nhỏ theo lịch linh hoạt.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- CTA -->
+          <div class="mt-12 rounded-2xl border p-6 shadow-sm text-center">
+            <h3 class="text-xl font-extrabold">Sẵn sàng chinh phục mục tiêu tiếng Anh?</h3>
+            <p class="text-slate-700 mt-2">Khám phá khóa học phù hợp và bắt đầu ngay hôm nay.</p>
+            <div class="mt-4 flex items-center justify-center gap-3">
+              <a href="#/courses" class="px-4 py-2 rounded-xl bg-violet-600 text-white font-semibold">Xem khóa học</a>
+              <a href="#/signup" class="px-4 py-2 rounded-xl border font-semibold">Đăng ký</a>
+            </div>
+          </div>
+        </div>
+      </section>
+      `;
+    }
+
+    function CourseCard(c){
+      return `
+      <article class="rounded-2xl overflow-hidden border shadow-sm bg-white">
+        <!-- Ảnh: bấm để vào chi tiết -->
+        <a href="#/course/${c.id}" class="block relative h-48 w-full overflow-hidden group">
+          <img src="${c.img}" alt="${c.title}" class="h-full w-full object-cover group-hover:scale-105 transition">
+        </a>
+
+        <div class="p-4">
+          <div class="text-xs text-slate-500">${c.tag || c.cat || ''}</div>
+
+          <!-- Tiêu đề: bấm để vào chi tiết -->
+          <a href="#/course/${c.id}" class="mt-1 block text-lg font-semibold hover:text-violet-700 line-2">
+            ${c.title}
+          </a>
+
+          <div class="mt-2 font-bold text-violet-700">${(c.price||0).toLocaleString('vi-VN')}đ</div>
+
+          <div class="mt-3 flex gap-2">
+            <!-- Button, không phải <a>, và chặn nổi bọt -->
+            <button class="px-3 py-1.5 rounded-lg bg-violet-600 text-white"
+                    onclick="event.stopPropagation(); buyNowGuard('${c.id}')">
+              Mua ngay
+            </button>
+            <button class="px-3 py-1.5 rounded-lg border"
+                    onclick="event.stopPropagation(); addToCartGuard('${c.id}')">
+              + Giỏ hàng
+            </button>
+          </div>
+        </div>
+      </article>`;
+    }
+
+  // Card dành cho khoá đã sở hữu (không có nút mua/giỏ)
+    function OwnedCourseCard(c){
+      return `
+      <article class="rounded-2xl overflow-hidden border shadow-sm bg-white">
+        <!-- Ảnh: bấm để xem chi tiết -->
+        <a href="#/course/${c.id}" class="block relative h-48 w-full overflow-hidden group">
+          <img src="${c.img}" alt="${c.title}" class="h-full w-full object-cover group-hover:scale-105 transition">
+        </a>
+
+        <div class="p-4">
+          <div class="text-xs text-slate-500">${c.tag || c.cat || ''}</div>
+
+          <!-- Tiêu đề: bấm để xem chi tiết -->
+          <a href="#/course/${c.id}" class="mt-1 block text-lg font-semibold hover:text-violet-700 line-2">
+            ${c.title}
+          </a>
+
+          <div class="mt-2 font-bold text-violet-700">
+            ${(c.price||0).toLocaleString('vi-VN')}đ
+          </div>
+          <!-- Không có nhóm nút hành động -->
+        </div>
+      </article>`;
+    }
+
+
+    const EV_LS = {
+      user:  'ev_user',
+      cart:  'ev_cart',
+      owned: 'ev_owned',
+    };
+    const lsGet = (k, def) => {
+      try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; }
+    };
+    const lsSet = (k, v) => localStorage.setItem(k, JSON.stringify(v));
+
+    /* ----------  B. User (fake auth) ---------- */
+    function getUser(){ return lsGet(EV_LS.user, null); }
+    function setUser(u){ lsSet(EV_LS.user, u); renderAuthSlot(); }
+    function signOut(){ localStorage.removeItem(EV_LS.user); renderAuthSlot(); }
+
+    function openAuthModal(mode='login'){
+      closeAuthModal();
+      const html = `
+      <div id="auth-modal" class="fixed inset-0 z-[60] bg-black/40 grid place-items-center p-4"
+          onclick="if(event.target.id==='auth-modal'){closeAuthModal()}">
+        <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+          <div class="flex items-center justify-between mb-2">
+            <div class="text-xl font-extrabold">${mode==='login'?'Đăng nhập':'Đăng ký'}</div>
+            <button class="p-1 rounded hover:bg-slate-100" onclick="closeAuthModal()">✕</button>
+          </div>
+          <div class="grid gap-3">
+            ${mode==='signup' ? `<input id="au_name" class="rounded-md border px-3 py-2" placeholder="Họ và tên">` : ``}
+            <input id="au_email" class="rounded-md border px-3 py-2" placeholder="Email" type="email">
+            <input id="au_pass"  class="rounded-md border px-3 py-2" placeholder="Mật khẩu (demo)" type="password">
+            <button class="mt-1 rounded-xl bg-violet-600 text-white py-2 font-semibold"
+                    onclick="${mode==='login' ? 'doLogin()' : 'doSignup()'}">
+              ${mode==='login'?'Đăng nhập':'Tạo tài khoản'}
+            </button>
+          </div>
+          <div class="text-sm text-slate-600 mt-3">
+            ${mode==='login'
+              ? `Chưa có tài khoản? <a class="text-violet-700 font-semibold cursor-pointer" onclick="openAuthModal('signup')">Đăng ký</a>`
+              : `Đã có tài khoản? <a class="text-violet-700 font-semibold cursor-pointer" onclick="openAuthModal('login')">Đăng nhập</a>`
+            }
+          </div>
+        </div>
+      </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    function closeAuthModal(){
+      const m = document.getElementById('auth-modal'); if(m) m.remove();
+    }
+    function doSignup(){
+      const name  = document.getElementById('au_name')?.value.trim();
+      const email = document.getElementById('au_email')?.value.trim();
+      const pass  = document.getElementById('au_pass')?.value.trim();
+      if(!name || !email || !pass){ alert('Vui lòng điền đủ thông tin.'); return; }
+      setUser({ id: 'U'+Date.now(), name, email });
+      closeAuthModal();
+      alert('Đăng ký thành công!');
+    }
+    function doLogin(){
+      const email = document.getElementById('au_email')?.value.trim();
+      const pass  = document.getElementById('au_pass')?.value.trim();
+      if(!email || !pass){ alert('Vui lòng nhập email & mật khẩu.'); return; }
+      // demo: chỉ cần email là “đăng nhập thành công”
+      setUser({ id: 'U'+Date.now(), name: email.split('@')[0], email });
+      closeAuthModal();
+      alert('Xin chào, ' + getUser().name + '!');
+    }
+
+    /* ----------  C. Cart ---------- */
+// Helpers nhỏ
+
+    const CART_KEY_DEFAULT = 'ev_cart'; 
+    const MY_KEY   = 'EV_MYCOURSES';
+
+// ===== Robust Cart helpers =====
+    window.CART_KEY = window.CART_KEY || null;
+
+    // cố gắng dò key giỏ hàng trong localStorage
+    function detectCartKey() {
+      if (window.CART_KEY) return window.CART_KEY;
+
+      // ƯU TIÊN: tất cả key có thể đã từng dùng
+      const candidates = [
+        'ev_cart',           // <- thêm key chữ thường
+        'EV_CART',
+        'engli_cart_v1',
+        'ENG_CART',
+        'engliverse_cart',
+        'cart',
+        'CART',
+      ];
+
+      // 1) Quét theo candidates
+      for (const k of candidates) {
+        const raw = localStorage.getItem(k);
+        if (!raw) continue;
+        try {
+          const val = JSON.parse(raw);
+          if (Array.isArray(val)) { window.CART_KEY = k; return k; }
+        } catch {}
+      }
+
+      // 2) Fallback: tìm key có chữ "cart" bất kỳ
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || !/cart/i.test(k)) continue;
+        const raw = localStorage.getItem(k);
+        try {
+          const val = JSON.parse(raw);
+          if (Array.isArray(val)) { window.CART_KEY = k; return k; }
+        } catch {}
+      }
+
+      // 3) Không thấy => dùng mặc định DUY NHẤT cho dự án (đã chọn ở trên)
+      window.CART_KEY = CART_KEY_DEFAULT;
+      return window.CART_KEY;
+    }
+
+    const CART_KEY_BASE = 'EV_CART';
+    function cartKeyFor(user) {
+      const uid = (user && user.id) ? user.id : 'guest';
+      return `${CART_KEY_BASE}_${uid}`;
+    }
+
+    function getCart() {
+      const key = cartKeyFor(getUser());
+      try {
+        const raw = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(raw) ? raw : [];
+      } catch { return []; }
+    }
+
+    function setCart(v) {
+      const key = cartKeyFor(getUser());
+      localStorage.setItem(key, JSON.stringify(v || []));
+    }
+
+    function addToCart(id) {
+      const cart = getCart();
+      if (!cart.find(x => x.id === id)) {
+        const c = (typeof COURSES !== 'undefined' ? COURSES : []).find(o => o.id === id);
+        cart.push({ id, price: c?.price || 0, title: c?.title || '' });
+        setCart(cart);
+      }
+      alert('Đã thêm vào giỏ hàng');
+    }
+
+    /* ===== Guarded actions ===== */
+    function addToCartGuard(courseId){
+      if (!requireAuthOrRedirect({ type:'add', id: courseId, back: location.hash || '#/courses' })) return;
+      addToCart(courseId);            // sử dụng hàm addToCart hiện có
+      alert('Đã thêm vào giỏ hàng');
+    }
+
+    function removeFromCart(courseId) {
+      const cart = getCart().filter(item => item.id !== courseId); // <— lưu ý: item.id
+      setCart(cart);
+    }
+
+    function clearCart() { setCart([]); }
+
+
+    // lấy id khoá từ phần tử cart dù là string hay object
+    function getCourseIdFromCartItem(x) {
+      if (typeof x === 'string') return x;
+      if (x && typeof x === 'object') {
+        return x.id ?? x.courseId ?? x._id ?? x.slug ?? null;
+      }
+      return null;
+    }
+
+    const MY_KEY_BASE = 'EV_MYCOURSES'; // key gốc
+
+    function myKeyFor(user) {
+      if (!user) return `${MY_KEY_BASE}_guest`;
+      const email = (user.email || '').trim().toLowerCase();
+      // fallback: nếu chưa có email thì vẫn dùng id (nhưng nên cố gắng có email)
+      const stable = email || (user.id || '').trim();
+      return `${MY_KEY_BASE}_${stable || 'guest'}`;
+    }
+
+    function getMy() {
+      const user = getUser();
+      const key  = myKeyFor(user);
+      try {
+        const arr = JSON.parse(localStorage.getItem(key) || '[]');
+        return Array.isArray(arr) ? arr : [];
+      } catch { return []; }
+    }
+
+    function setMy(list) {
+      const user = getUser();
+      const key  = myKeyFor(user);
+      localStorage.setItem(key, JSON.stringify(list || []));
+    }
+
+    function payCartAll(){
+      const raw = getCart();                     // đọc giỏ hiện có
+      // map sang list khóa hợp lệ
+      const items = raw
+        .map(x => getCourseIdFromCartItem(x))
+        .filter(Boolean)
+        .map(id => findCourseById(id))
+        .filter(Boolean);
+
+      // Nếu vẫn rỗng => debug cho bạn xem cart chứa gì
+      if (!items.length) {
+        console.warn('[Cart debug] key:', window.CART_KEY, 'raw:', raw);
+        alert('Giỏ hàng trống');
+        return;
+      }
+
+      // đóng gói dữ liệu checkout cho mode CART
+      window.CHECKOUT = {
+        mode: 'cart',
+        items: items.map(c => ({ id:c.id, title:c.title, price:c.price, img:c.img, author:c.author }))
+      };
+
+      // điều hướng tới checkout (không có id)
+      location.hash = '#/checkout';
+    }
+
+
+    // function demoAddToCart(courseId){
+    //   const cart = getCart();
+    //   if(!cart.includes(courseId)) cart.push(courseId);
+    //   setCart(cart);
+    //   // gợi ý mở trang giỏ hàng
+    //   const go = confirm('Đã thêm vào giỏ. Mở giỏ hàng?');
+    //   if(go) location.hash = '#/cart';
+    //     }
+
+    /* ----------  D. Owned (purchased) ---------- */
+    function getOwned(){ return lsGet(EV_LS.owned, []); }
+    function addOwned(courseId) {
+      if (!courseId) return;
+      const mine = new Set(getMy());
+      mine.add(courseId);
+      setMy(Array.from(mine));
+    }
+
+    function removeOwned(courseId) {
+      if (!courseId) return;
+      const mine = new Set(getMy());
+      mine.delete(courseId);
+      setMy(Array.from(mine));
+    }
+    /* ----------  E. Header auth state ---------- */
+    function renderAuthSlot(){
+      const el = document.getElementById('auth-slot');
+      if(!el) return;
+      const me = getUser();
+      const cartCount = getCart().length;
+      el.innerHTML = me ? `
+        <a href="#/my-courses" class="text-sm hover:underline">Khoá học của tôi</a>
+        <a href="#/cart" class="relative px-3 py-1.5 rounded-lg border hover:bg-slate-50 text-sm">
+          Giỏ hàng
+          <span id="cart-badge" class="ml-1 inline-flex items-center justify-center min-w-5 h-5 text-xs rounded-full bg-violet-600 text-white px-1">${cartCount}</span>
+        </a>
+        <div class="text-sm">Xin chào, <b>${me.name}</b></div>
+        <button class="px-3 py-1.5 rounded-lg border text-sm hover:bg-slate-50" onclick="signOut()">Đăng xuất</button>
+      ` : `
+        <a class="px-3 py-1.5 rounded-lg border text-sm hover:bg-slate-50" onclick="openAuthModal('login')">Đăng nhập</a>
+        <a class="px-3 py-1.5 rounded-lg bg-violet-600 text-white text-sm" onclick="openAuthModal('signup')">Đăng ký</a>
+        <a href="#/cart" class="relative px-3 py-1.5 rounded-lg border text-sm hover:bg-slate-50">
+          Giỏ hàng <span id="cart-badge" class="ml-1 inline-flex items-center justify-center min-w-5 h-5 text-xs rounded-full bg-violet-600 text-white px-1">${cartCount}</span>
+        </a>
+      `;
+    }
+    function updateCartBadge() {
+      const el = document.querySelector('[data-cart-badge]');
+      if (!el) return;
+      const n = getCart().length;
+      el.textContent = n;
+      el.style.display = n > 0 ? 'inline-flex' : 'none';
+    }
+
+
+    /* ----------  F. Pages (Cart & MyCourses) ---------- */
+    function findCourseById(id){
+      return (typeof COURSES!=='undefined' ? COURSES : []).find(x=>x.id===id);
+    }
+    function moneyVND(n){ try{ return (n||0).toLocaleString('vi-VN')+'₫'; }catch{ return (n||0)+'₫'; } }
+
+    function CartPage(){
+      const raw = getCart();
+
+      // Rút ra danh sách id hợp lệ
+      const ids = raw
+        .map(x => getCourseIdFromCartItem(x))  // lấy id từ string/object
+        .filter(Boolean);
+      const list = (typeof COURSES!=='undefined'?COURSES:[]).filter(c => ids.includes(c.id));
+      const sum = list.reduce((a,c)=>a+(c.price||0),0);
+      return `
+      <section class="py-10">
+        <div class="max-w-5xl mx-auto px-4">
+          <h1 class="text-3xl font-extrabold mb-4">Giỏ hàng</h1>
+          ${list.length?`
+            <div class="grid md:grid-cols-3 gap-6">
+              <div class="md:col-span-2 space-y-4">
+                ${list.map(c => `
+                  <div class="rounded-xl border p-4 flex gap-3 items-center bg-white">
+                    <img src="${c.img}" class="h-16 w-24 object-cover rounded-md">
+                    <div class="flex-1">
+                      <div class="font-semibold line-2">${c.title}</div>
+                      <div class="text-violet-700 font-bold">${moneyVND(c.price)}</div>
+                    </div>
+                    <div class="flex gap-2">
+                      <a href="#/checkout/${c.id}" class="px-3 py-1.5 rounded-lg bg-violet-600 text-white text-sm">Mua ngay</a>
+                      <button class="px-3 py-1.5 rounded-lg border text-sm hover:bg-slate-50"
+                              onclick="removeFromCart('${c.id}'); render()">Xoá</button>
+                    </div>
+                  </div>`).join('')}
+              </div>
+              <aside class="rounded-xl border p-4 h-fit bg-white">
+                <div class="font-semibold">Tóm tắt</div>
+                <div class="flex items-center justify-between mt-2">
+                  <span>Tạm tính</span><span class="font-bold">${moneyVND(sum)}</span>
+                </div>
+                <div class="mt-4 grid gap-2">
+                  <button class="w-full rounded-xl bg-violet-600 text-white py-3 font-semibold"
+                          onclick="payCartAll()">
+                    Thanh toán tất cả
+                  </button>
+                  <button class="rounded-xl border py-2" onclick="clearCart(); render()">Xoá giỏ hàng</button>
+                </div>
+              </aside>
+            </div>
+          `:`
+            <div class="rounded-xl border p-8 text-center bg-white">
+              Giỏ hàng trống. <a class="text-violet-700 font-semibold" href="#/courses">Xem khoá học</a>
+            </div>
+          `}
+        </div>
+      </section>`;
+    }
+
+    function checkoutAll(){
+      const items = getCart();
+      if (!items.length){
+        alert('Giỏ hàng đang trống.');
+        return;
+      }
+      // Lưu đơn hàng tạm để chuyển sang trang Checkout
+      window.CHECKOUT = { type: 'cart', items };            // hoặc sessionStorage.setItem('CHECKOUT', JSON.stringify({type:'cart', items}))
+      // Điều hướng
+      location.hash = '#/checkout/cart';
+    }
+
+    function MyCoursesPage(){
+      const mine = new Set(getMy());
+      const list = (typeof COURSES !== 'undefined' ? COURSES : []).filter(c => mine.has(c.id));
+
+      if (!list.length) {
+        return `
+          <section class="py-16">
+            <div class="max-w-3xl mx-auto px-4 text-center">
+              <h1 class="text-3xl font-extrabold">Khoá học của tôi</h1>
+              <p class="text-slate-600 mt-2">Bạn chưa có khoá học nào.</p>
+              <a class="mt-4 inline-block px-4 py-2 rounded-xl bg-violet-600 text-white" href="#/courses">Khám phá khoá học</a>
+            </div>
+          </section>`;
+      }
+
+      return `
+        <section class="py-10">
+          <div class="max-w-6xl mx-auto px-4">
+            <h1 class="text-3xl font-extrabold mb-6">Khoá học của tôi</h1>
+            <div class="grid md:grid-cols-3 gap-6">
+              ${list.map(c => OwnedCourseCard(c)).join('')}
+            </div>
+          </div>
+        </section>`;
+    }
+
+        /* ===== Mock helpers ===== */
+    function findCourseById(id){
+      return (typeof COURSES !== 'undefined' ? COURSES : []).find(x=>x.id===id);
+    }
+    function formatMoneyVND(n){try{return n.toLocaleString("vi-VN")+"₫";}catch{ return n+"₫"; }}
+
+    /* Bảng cấu hình gói trả góp 0% (ví dụ minh hoạ) */
+    const INSTALLMENT_PLANS = [
+      {label:"3 tháng", months:3},
+      {label:"6 tháng", months:6},
+      {label:"9 tháng", months:9},
+      {label:"12 tháng", months:12},
+    ];
+
+    /* Thành phần chọn phương thức */
+    function MethodPill(key, label, icon, active){
+      return `
+      <button data-method="${key}"
+        class="pay-pill ${active?'is-active':''} inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-white hover:bg-violet-50"
+        onclick="selectPayMethod('${key}')">
+        ${icon} <span class="font-medium">${label}</span>
+      </button>`;
+    }
+
+    /* UI nhóm phương thức thanh toán */
+    function PaymentMethods(active="wallet"){
+      return `
+      <div class="space-y-3">
+        <div class="flex flex-wrap gap-2">
+          ${MethodPill("wallet", "Ví điện tử (MoMo, ZaloPay, ShopeePay)", iconWallet(), active==="wallet")}
+          ${MethodPill("bank",   "Thẻ ATM nội địa / Internet Banking",   iconBank(),   active==="bank")}
+          ${MethodPill("card",   "Thẻ quốc tế (Visa/Master/JCB)",        iconCard(),   active==="card")}
+          ${MethodPill("qr",     "QR-Pay (QR động)",                      iconQr(),     active==="qr")}
+          ${MethodPill("install","Trả góp 0% (Kredivo / Thẻ tín dụng)", iconPercent(), active==="install")}
+        </div>
+
+        <div id="method-panel" class="rounded-2xl border p-4 shadow-sm bg-white">
+          ${MethodPanel(active)}
+        </div>
+      </div>`;
+    }
+
+    /* Nội dung panel theo phương thức */
+    function MethodPanel(key){
+      if(key==="wallet"){
+        return `
+        <div class="space-y-3">
+          <div class="font-semibold">Chọn ví điện tử</div>
+          <div class="flex flex-wrap gap-3">
+            ${["MoMo","ZaloPay","ShopeePay"].map(w => `
+              <button class="wallet-pill px-3 py-1.5 rounded-lg border hover:bg-violet-50"
+                      onclick="selectWallet('${w}')" data-wallet="${w}">
+                ${w}
+              </button>`).join("")}
+          </div>
+          <div class="mt-3 grid md:grid-cols-2 gap-3">
+            <input id="wallet_phone" class="input" placeholder="Số điện thoại đăng ký ví">
+            <input id="wallet_email" class="input" placeholder="Email nhận hoá đơn (tuỳ chọn)">
+          </div>
+        </div>`;
+      }
+
+      if(key==="bank"){
+        return `
+        <div class="space-y-3">
+          <div class="font-semibold">Thẻ ATM nội địa / Internet Banking</div>
+          <p class="text-sm text-slate-600">Chọn ngân hàng trong hệ thống Napas.</p>
+          <div class="flex flex-wrap gap-2">
+            ${["Vietcombank","Techcombank","VietinBank","BIDV","MB","ACB","TPBank","VPBank","Agribank"]
+              .map(b=>`
+                <button class="bank-pill px-2.5 py-1.5 rounded-lg border hover:bg-violet-50"
+                        onclick="selectBank('${b}')" data-bank="${b}">
+                  ${b}
+                </button>`).join("")}
+          </div>
+          <div class="mt-3 grid md:grid-cols-2 gap-3">
+            <input class="input" placeholder="Họ và tên chủ tài khoản">
+            <input class="input" placeholder="Số điện thoại">
+            <input class="input md:col-span-2" placeholder="Email nhận hoá đơn">
+          </div>
+        </div>`;
+      }
+
+      if(key==="card"){
+        return `
+        <div class="grid md:grid-cols-2 gap-4">
+          <div>
+            <div class="font-semibold mb-2">Thông tin thẻ quốc tế</div>
+            <div class="grid gap-3">
+              <input class="input" placeholder="Tên in trên thẻ (VD: NGUYEN VAN A)">
+              <input class="input" placeholder="Số thẻ (xxxx xxxx xxxx xxxx)" maxlength="19">
+              <div class="grid grid-cols-2 gap-3">
+                <input class="input" placeholder="MM/YY" maxlength="5">
+                <input class="input" placeholder="CVV/CVC" maxlength="4">
+              </div>
+            </div>
+          </div>
+          <div class="space-y-2">
+            <div class="font-semibold">Thương hiệu thẻ</div>
+            <div class="flex gap-3">${Brand("Visa")} ${Brand("Mastercard")} ${Brand("JCB")}</div>
+          </div>
+        </div>`;
+      }
+
+      if(key==="qr"){
+        return `
+        <div class="grid md:grid-cols-2 gap-4 items-center">
+          <div>
+            <div class="font-semibold mb-2">Quét mã QR</div>
+            <p class="text-sm text-slate-600">Quét bằng app ngân hàng để thanh toán. Mã QR có hiệu lực 10 phút.</p>
+            <ul class="text-sm list-disc ml-5 mt-2 text-slate-600">
+              <li>Số tiền và nội dung được điền sẵn</li>
+              <li>Hỗ trợ hầu hết ngân hàng Việt Nam</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border p-4 flex items-center justify-center bg-slate-50">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=ENGLIVERSE-DEMO" alt="QR Demo">
+          </div>
+        </div>`;
+      }
+
+      if(key==="install"){
+        return `
+        <div class="space-y-3">
+          <div class="font-semibold">Chọn kỳ hạn trả góp 0%</div>
+          <div class="flex flex-wrap gap-2">
+            ${INSTALLMENT_PLANS.map(p => 
+              `<button class="plan-pill px-3 py-1.5 rounded-lg border hover:bg-violet-50" 
+                onclick="selectInstall(${p.months})" data-months="${p.months}">
+                ${p.label}
+              </button>`).join("")}
+          </div>
+          <div id="install-calc" class="text-sm text-slate-700"></div>
+          <div class="grid md:grid-cols-2 gap-3">
+            <input class="input" placeholder="Tên in trên thẻ tín dụng">
+            <input class="input" placeholder="Số thẻ (16 số)">
+            <div class="grid grid-cols-2 gap-3">
+              <input class="input" placeholder="MM/YY">
+              <input class="input" placeholder="CVV">
+            </div>
+          </div>
+          <p class="text-sm text-slate-600">Trả góp 0% qua Kredivo hoặc thẻ tín dụng (chỉ áp dụng cho đơn > 3.000.000₫).</p>
+        </div>`;
+      }
+
+      return `<div>Chọn phương thức thanh toán</div>`;
+    }
+
+
+    /* Logo/nhãn gọn */
+    function Brand(name){
+      return `<span class="inline-flex items-center px-2.5 py-1 rounded-lg border bg-white">${name}</span>`;
+    }
+    /* Demo lưới ngân hàng */
+    function BankGrid(){
+      const banks=["Vietcombank","Techcombank","VietinBank","BIDV","MB","ACB","TPBank","VPBank","Agribank"];
+      return `<div class="grid grid-cols-3 md:grid-cols-5 gap-2 mt-2">
+        ${banks.map(b=>`<div class="bank-tile">${b}</div>`).join("")}
+      </div>`;
+    }
+
+    /* Tính toán trả góp */
+    function calcInstallment(total, months){
+      const monthly = Math.ceil(total / months);
+      return { monthly, months };
+    }
+
+    /* ====== Trang Checkout ====== */
+    function CheckoutPage(courseId){
+      // === Mode xác định
+      // - Mua lẻ: courseId có giá trị -> 1 item
+      // - Mua giỏ: window.CHECKOUT?.mode==='cart' -> nhiều item
+      let items = [];
+      if (window.CHECKOUT?.mode === 'cart' && Array.isArray(window.CHECKOUT.items)) {
+        items = window.CHECKOUT.items.map(x => ({
+          id:x.id,
+          title:x.title,
+          price:x.price||0,
+          img:x.img||'',
+          author:x.author||''
+        }));
+      } else {
+        const c = findCourseById(courseId);
+        if (c) items = [{ id:c.id, title:c.title, price:c.price||0, img:c.img||'', author:c.author||'' }];
+      }
+
+      if (!items.length){
+        // không có gì để checkout -> quay về giỏ
+        location.hash = '#/cart';
+        return '<section class="py-12 text-center">Không có sản phẩm để thanh toán.</section>';
+      }
+
+      const basePrice = items.reduce((s, i) => s + (i.price||0), 0);
+      const discount  = 0;
+      const total     = basePrice - discount;
+
+      // HTML danh sách bên tóm tắt
+      const orderList = items.map(i => `
+        <div class="mt-3 flex items-start gap-3">
+          <div class="h-16 w-24 rounded-md bg-slate-100 overflow-hidden">
+            <img src="${i.img||''}" class="h-full w-full object-cover"/>
+          </div>
+          <div class="text-sm flex-1">
+            <div class="font-semibold line-2">${i.title||''}</div>
+            ${i.author?`<div class="text-slate-600">${i.author}</div>`:''}
+          </div>
+          <div class="font-semibold text-violet-700">${formatMoneyVND(i.price||0)}</div>
+        </div>`).join('');
+
+      // lấy ảnh + title của item đầu để hiển thị mobile (giữ nguyên UI cũ)
+      const first = items[0];
+
+      return `
+      <section class="py-10 bg-gradient-to-b from-violet-50 to-white">
+        <div class="max-w-6xl mx-auto px-4">
+          <div class="flex items-center gap-2 text-violet-700 font-semibold mb-1">
+            ${iconShield()} <span>Thanh toán an toàn</span>
+          </div>
+          <h1 class="text-3xl md:text-4xl font-extrabold">Checkout</h1>
+          <p class="text-slate-600 mt-1">Hoàn tất thanh toán để bắt đầu học ngay trên Engliverse.</p>
+
+          <div class="mt-8 grid md:grid-cols-3 gap-6">
+            <!-- Cột trái -->
+            <div class="md:col-span-2 space-y-6">
+              <!-- Tổng quan đơn (mobile) -->
+              <div class="rounded-2xl border p-4 shadow-sm bg-white md:hidden">
+                <div class="font-semibold">Đơn hàng (${items.length} sản phẩm)</div>
+                <div class="mt-2 flex items-center gap-3">
+                  <div class="h-16 w-24 rounded-md bg-slate-100 overflow-hidden">
+                    <img src="${first.img||''}" class="h-full w-full object-cover" />
+                  </div>
+                  <div class="flex-1">
+                    <div class="font-semibold line-2">${first.title}</div>
+                    ${first.author?`<div class="text-sm text-slate-600">${first.author}</div>`:""}
+                  </div>
+                  <div class="ml-auto font-bold text-violet-700">${formatMoneyVND(first.price)}</div>
+                </div>
+              </div>
+
+              <!-- Thông tin người mua -->
+              <div class="rounded-2xl border p-5 shadow-sm bg-white">
+                <div class="font-semibold mb-3">Thông tin người mua</div>
+                <div class="grid md:grid-cols-2 gap-3">
+                  <input id="buyer_name" class="input" placeholder="Họ và tên *" required>
+                  <input id="buyer_email" class="input" placeholder="Email *" required type="email">
+                  <input id="buyer_phone" class="input" placeholder="Số điện thoại *" required>
+                  <input id="buyer_company" class="input" placeholder="Công ty (nếu xuất hoá đơn)">
+                </div>
+                <label class="mt-3 inline-flex items-center gap-2 text-sm text-slate-700">
+                  <input id="buyer_invoice" type="checkbox" class="h-4 w-4"> Yêu cầu xuất hoá đơn GTGT
+                </label>
+              </div>
+
+              <!-- Phương thức thanh toán -->
+              <div class="rounded-2xl border p-5 shadow-sm bg-white">
+                <div class="font-semibold mb-3">Hình thức thanh toán</div>
+                ${PaymentMethods("wallet")}
+              </div>
+            </div>
+
+            <!-- Cột phải: Tóm tắt -->
+            <aside class="space-y-4">
+              <div class="rounded-2xl border p-5 shadow-sm bg-white">
+                <div class="font-semibold">Đơn hàng (${items.length} sản phẩm)</div>
+                ${orderList}
+
+                <div class="mt-4 grid gap-2">
+                  <div class="flex items-center justify-between text-sm">
+                    <span>Tạm tính</span><span id="sum_subtotal">${formatMoneyVND(basePrice)}</span>
+                  </div>
+                  <div class="flex items-center justify-between text-sm">
+                    <span>Giảm giá</span><span id="sum_discount">0₫</span>
+                  </div>
+                  <div class="h-px bg-slate-200 my-1"></div>
+                  <div class="flex items-center justify-between font-bold">
+                    <span>Thành tiền</span><span id="sum_total">${formatMoneyVND(total)}</span>
+                  </div>
+                </div>
+
+                <div class="mt-4 flex gap-2">
+                  <input id="coupon_input" class="input flex-1" placeholder="Mã giảm giá (VD: ENGLI10)">
+                  <button class="px-3 py-2 rounded-lg border hover:bg-slate-50" onclick="applyCoupon(${basePrice})">Áp dụng</button>
+                </div>
+
+                <!-- total gốc cho module trả góp -->
+                <input type="hidden" id="base_price" value="${basePrice}">
+              </div>
+
+              <button id="btn_pay"
+                class="w-full rounded-xl bg-violet-600 text-white py-3 font-semibold flex items-center justify-center gap-2"
+                onclick="submitPayment('${courseId||''}')">
+                Thanh toán
+              </button>
+              <div class="text-xs text-slate-500 text-center">
+                Bằng việc thanh toán bạn đồng ý với <a href="#" class="underline">Điều khoản</a> & <a href="#" class="underline">Chính sách</a>.
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>`;
+    }
+
+
+    /* ====== Runtime handlers ====== */
+    function selectPayMethod(key){
+      const pills = document.querySelectorAll('.pay-pill');
+      pills.forEach(p=>p.classList.remove('is-active'));
+      const active = Array.from(pills).find(p=>p.dataset.method===key);
+      if(active) active.classList.add('is-active');
+
+      const panel = document.getElementById('method-panel');
+      if(panel) panel.innerHTML = MethodPanel(key);
+
+      // nếu là trả góp thì tính sẵn theo months đầu danh sách
+      if(key==="install"){
+        const base = parseInt(document.getElementById('base_price')?.value||'0',10);
+        const first = INSTALLMENT_PLANS[0]?.months || 3;
+        const {monthly} = calcInstallment(base, first);
+        const box = document.getElementById('install-calc');
+        if(box) box.innerHTML = `Khoản trả hàng tháng (ước tính): <b class="text-violet-700">${formatMoneyVND(monthly)}</b> / tháng (${first} tháng)`;
+        // active pill
+        document.querySelectorAll('.wallet-pill, .bank-pill, .plan-pill')
+          .forEach(el => el.classList.remove('bg-violet-50','border-violet-300'));
+        setTimeout(()=> {
+          document.querySelectorAll('.plan-pill').forEach((el,i)=> el.classList.toggle('bg-violet-50', i===0));
+        }, 0);
+      }
+    }
+    function selectWallet(name){
+      document.querySelectorAll('.wallet-pill').forEach(el=>{
+        el.classList.toggle('bg-violet-50', el.dataset.wallet===name);
+        el.classList.toggle('border-violet-300', el.dataset.wallet===name);
+      });
+    }
+
+    function selectBank(name){
+      document.querySelectorAll('.bank-pill').forEach(el=>{
+        el.classList.toggle('bg-violet-50', el.dataset.bank===name);
+        el.classList.toggle('border-violet-300', el.dataset.bank===name);
+      });
+    }
+
+    function selectInstall(months){
+      const base = parseInt(document.getElementById('base_price')?.value||'0',10);
+      const {monthly} = calcInstallment(base, months);
+      const box = document.getElementById('install-calc');
+      if(box) box.innerHTML = `Khoản trả hàng tháng (ước tính): <b class="text-violet-700">${formatMoneyVND(monthly)}</b> / tháng (${months} tháng)`;
+
+      document.querySelectorAll('.plan-pill').forEach(el=>{
+        el.classList.toggle('bg-violet-50', Number(el.dataset.months)===months);
+      });
+    }
+
+    /* Áp dụng mã giảm giá demo */
+    function applyCoupon(basePrice){
+      const input = document.getElementById('coupon_input');
+      const code = (input?.value||"").trim().toUpperCase();
+      let discount = 0;
+
+      // Demo: ENGLI10 = -10%, ENGLI500K = -500k
+      if(code==="ENGLI10") discount = Math.round(basePrice*0.1);
+      if(code==="ENGLI500K") discount = 500000;
+      if(discount>basePrice) discount = basePrice;
+
+      document.getElementById('sum_discount').textContent = formatMoneyVND(discount);
+      document.getElementById('sum_total').textContent = formatMoneyVND(basePrice-discount);
+    }
+
+    /* Submit payment (demo) */
+    function submitPayment(courseId){
+      // 0) Validate thông tin người mua
+      const name  = document.getElementById('buyer_name')?.value.trim();
+      const email = document.getElementById('buyer_email')?.value.trim();
+      const phone = document.getElementById('buyer_phone')?.value.trim();
+      if (!name || !email || !phone) {
+        alert("Vui lòng điền đủ Họ tên, Email, SĐT.");
+        return;
+      }
+
+      // 1) Loading UI
+      const btn = document.getElementById('btn_pay');
+      if (btn) {
+        btn.disabled = true;
+        var backup = btn.innerHTML;
+        btn.innerHTML = `${iconSpinner()} Đang xử lý...`;
+      }
+
+      // 2) Mô phỏng cổng thanh toán
+      setTimeout(() => {
+        // 2.1) Lấy set khóa hiện có của user
+        const mineSet = new Set(getMy());   // getMy() cần trả về mảng id (['ielts-7-plus', ...])
+
+        // 2.2) Thêm khóa đã mua
+        let mode = window.CHECKOUT?.mode || null;
+
+        if (mode === 'cart' && Array.isArray(window.CHECKOUT?.items)) {
+          // cart: cộng dồn tất cả id
+          window.CHECKOUT.items.forEach(i => {
+            // phòng ngừa item không có id
+            const cid = i?.id ?? i?.courseId ?? i?._id ?? null;
+            if (cid) mineSet.add(cid);
+          });
+          // xóa giỏ sau khi thanh toán
+          setCart([]);
+        } else if (courseId) {
+          // buy now: cộng 1 id
+          mineSet.add(courseId);
+        }
+
+        // 2.3) Lưu lại MY_COURSES
+        setMy(Array.from(mineSet));
+
+        // 2.4) Gỡ CHECKOUT và lấy tổng tiền hiển thị
+        const totalText = document.getElementById('sum_total')?.textContent || '';
+        window.CHECKOUT = null;
+
+        // 2.5) UI done
+        if (btn) {
+          btn.innerHTML = backup;
+          btn.disabled  = false;
+        }
+
+        // 3) Điều hướng sang trang success
+        // - Nếu là cart: truyền 'cart' thay courseId
+        // - Nếu là buy now: truyền chính courseId
+        const successKey = (mode === 'cart') ? 'cart' : (courseId || 'course');
+        location.hash = `#/payment-success/${successKey}/${encodeURIComponent(totalText)}`;
+      }, 900);
+    }
+
+
+    /* Trang THANK YOU (demo) */
+    function PaymentSuccessPage(orderTarget, totalText){
+      const orderNo = Math.random().toString(36).slice(2, 10).toUpperCase();
+      const isCart  = (orderTarget === 'cart');
+
+      // KHÔNG thêm/xoá dữ liệu ở đây nữa — đã xử lý trong submitPayment()
+      // try{ addOwned(orderTarget); removeFromCart(orderTarget); }catch{}
+
+      // Nếu mua 1 khoá: lấy tiêu đề để hiển thị
+      const course = isCart ? null : (findCourseById(orderTarget) || { title: "Khoá học" });
+
+      const titleLine = isCart
+        ? "Giỏ hàng (nhiều khoá)"
+        : course.title;
+
+      return `
+      <section class="py-16">
+        <div class="max-w-xl mx-auto px-4 text-center">
+          <div class="mx-auto h-16 w-16 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+            ✓
+          </div>
+          <h1 class="mt-4 text-3xl font-extrabold">Thanh toán thành công!</h1>
+          <p class="text-slate-600 mt-2">
+            Đơn hàng <b>${orderNo}</b> – ${titleLine}
+          </p>
+          <p class="text-slate-600">
+            Tổng thanh toán: <b class="text-violet-700">${decodeURIComponent(totalText || '')}</b>
+          </p>
+          <div class="mt-6 flex justify-center gap-3">
+            <a class="px-4 py-2 rounded-xl bg-violet-600 text-white" href="#/my-courses">Khoá học của tôi</a>
+            <a class="px-4 py-2 rounded-xl border" href="#/courses">Tiếp tục xem khoá</a>
+          </div>
+          <p class="text-xs text-slate-500 mt-6">
+            Mã truy cập đã được kích hoạt cho tài khoản của bạn. Nếu không thấy email, vui lòng kiểm tra hộp thư rác.
+          </p>
+        </div>
+      </section>`;
+    }
+
+    function AuthPage(){
+      return `
+      <section class="py-16">
+        <div class="max-w-md mx-auto border rounded-2xl p-6 shadow-sm">
+          <h2 class="text-xl font-extrabold mb-4">Đăng nhập</h2>
+          <input class="border rounded-md w-full px-3 py-2 mb-3" placeholder="Email"/>
+          <input type="password" class="border rounded-md w-full px-3 py-2 mb-3" placeholder="Mật khẩu"/>
+          <button class="w-full bg-violet-600 text-white rounded-xl py-2">Đăng nhập</button>
+        </div>
+      </section>`;
+    }
+
+    function SignupPage(){
+      return `
+      <section class="py-16">
+        <div class="max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-8">
+          <!-- Form -->
+          <div class="border rounded-2xl p-6 shadow-sm">
+            <h2 class="text-2xl font-extrabold mb-2">Tạo tài khoản</h2>
+            <p class="text-slate-600 mb-4">Miễn phí • Học thử ngay sau khi đăng ký</p>
+
+            <form id="signup-form" class="space-y-3">
+              <input class="border rounded-md w-full px-3 py-2" placeholder="Họ và tên" required/>
+              <input type="email" class="border rounded-md w-full px-3 py-2" placeholder="Email" required/>
+              <input type="password" class="border rounded-md w-full px-3 py-2" placeholder="Mật khẩu" required minlength="6"/>
+              <input type="password" class="border rounded-md w-full px-3 py-2" placeholder="Nhập lại mật khẩu" required minlength="6"/>
+
+              <div class="grid md:grid-cols-2 gap-3">
+                <select class="border rounded-md px-3 py-2">
+                  <option>Mục tiêu: IELTS</option>
+                  <option>Mục tiêu: TOEIC</option>
+                  <option>Mục tiêu: Speaking</option>
+                  <option>Mục tiêu: Business</option>
+                </select>
+                <select class="border rounded-md px-3 py-2">
+                  <option>Trình độ: Beginner</option>
+                  <option>Elementary (A2)</option>
+                  <option>Intermediate (B1)</option>
+                  <option>Upper (B2+)</option>
+                </select>
+              </div>
+
+              <label class="flex items-start gap-2 text-sm text-slate-600">
+                <input type="checkbox" required class="mt-1">
+                <span>Tôi đồng ý với Điều khoản & Chính sách bảo mật</span>
+              </label>
+
+              <button type="submit" class="w-full bg-violet-600 text-white rounded-xl py-2 font-semibold">
+                Đăng ký
+              </button>
+
+              <div id="signup-msg" class="hidden rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 px-3 py-2"></div>
+            </form>
+
+            <div class="text-sm text-slate-600 mt-4">
+              Đã có tài khoản?
+              <a href="#/auth" class="text-violet-700 font-semibold">Đăng nhập</a>
+            </div>
+          </div>
+
+          <!-- Lợi ích -->
+          <div class="rounded-2xl p-6 bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white">
+            <h3 class="text-xl font-bold">Quyền lợi khi tham gia Engliverse</h3>
+            <ul class="mt-4 space-y-2 text-violet-50">
+              <li>• Truy cập kho bài giảng & tài liệu tải về</li>
+              <li>• Lộ trình học theo mục tiêu cá nhân</li>
+              <li>• Câu lạc bộ Speaking hàng tuần</li>
+              <li>• Feedback Writing/Speaking chi tiết</li>
+            </ul>
+            <img class="mt-6 rounded-xl shadow-2xl"
+                src="https://images.unsplash.com/photo-1513258496099-48168024aec0?q=80&w=1200&auto=format&fit=crop"
+                alt="Learn"/>
+          </div>
+        </div>
+      </section>`;
+    }
+
+    /* gắn handler cho form signup sau khi render */
+    function attachSignupHandlers(){
+      const form = document.getElementById('signup-form');
+      if(!form) return;
+      const msg = document.getElementById('signup-msg');
+
+      form.addEventListener('submit', function(e){
+        e.preventDefault();
+        const inputs = form.querySelectorAll('input[type="password"]');
+        const pass1 = inputs[0].value.trim();
+        const pass2 = inputs[1].value.trim();
+
+        if(pass1 !== pass2){
+          msg.textContent = 'Mật khẩu nhập lại không khớp.';
+          msg.classList.remove('hidden');
+          msg.classList.remove('border-emerald-200','bg-emerald-50','text-emerald-700');
+          msg.classList.add('border-rose-200','bg-rose-50','text-rose-700');
+          return;
+        }
+
+        msg.textContent = 'Tạo tài khoản thành công! Bạn có thể đăng nhập ngay.';
+        msg.classList.remove('hidden','border-rose-200','bg-rose-50','text-rose-700');
+        msg.classList.add('border-emerald-200','bg-emerald-50','text-emerald-700');
+
+        // demo: chuyển về trang đăng nhập sau 1.2s
+        setTimeout(()=>{ location.hash = '#/auth'; }, 1200);
+      });
+    }
+
+    function enableBenefitTilt(){
+      const cards = document.querySelectorAll('.benefit-tilt .benefit-card');
+      if(!cards.length) return;
+      const max = 8; // độ nghiêng tối đa
+
+      cards.forEach(card=>{
+        let raf = null;
+        function onMove(e){
+          const r = card.getBoundingClientRect();
+          const cx = r.left + r.width/2;
+          const cy = r.top  + r.height/2;
+          const dx = (e.clientX - cx) / (r.width/2);
+          const dy = (e.clientY - cy) / (r.height/2);
+          const rx = (-dy*max).toFixed(2)+'deg';
+          const ry = ( dx*max).toFixed(2)+'deg';
+          if(raf) cancelAnimationFrame(raf);
+          raf = requestAnimationFrame(()=>{
+            card.style.setProperty('--rx', rx);
+            card.style.setProperty('--ry', ry);
+          });
+        }
+        function onLeave(){
+          if(raf) cancelAnimationFrame(raf);
+          card.style.setProperty('--rx','0deg');
+          card.style.setProperty('--ry','0deg');
+        }
+        card.addEventListener('mousemove', onMove, {passive:true});
+        card.addEventListener('mouseleave', onLeave);
+        card.addEventListener('blur', onLeave);
+      });
+    }
+
+    function buyNow(courseId){
+      window.CHECKOUT = null; // đảm bảo không lẫn đơn cart
+      location.hash = `#/checkout/${courseId}`;
+    }
+
+
+    function buyNowGuard(courseId){
+      if (!requireAuthOrRedirect({ type:'checkout', id: courseId })) return;
+      location.hash = `#/checkout/${courseId}`;
+    }
+
+    function checkoutCartGuard(){
+      if (!requireAuthOrRedirect({ type:'checkout-cart' })) return;
+      location.hash = '#/checkout/cart';
+    }
+
+
+    if(!location.hash) location.hash="#/";
+    function render(){
+      const app = document.getElementById('app');
+      const hash = location.hash || "#/";
+      const [p,id,a]=parse();
+      window.scrollTo(0,0);
+
+      if (p === 'cart') {
+        app.innerHTML = CartPage();         // <- hàm vẽ giỏ hàng
+        renderAuthSlot();                    // cập nhật góc phải (avatar/đăng nhập)
+        return;
+      }
+      if (p === 'my-courses') {
+        app.innerHTML = MyCoursesPage();    // <- hàm vẽ danh sách khóa đã mua
+        renderAuthSlot();
+        return;
+      }
+        
+      if(!p){
+        app.innerHTML = HomePage();
+        enableBenefitTilt();
+        startHeroStars();           // ← bật hiệu ứng sao ở trang Home
+      }  
+
+      else if(p==="blog"){
+        if(id) app.innerHTML=BlogDetailPage(id);
+        else    app.innerHTML=BlogPage();
+      }
+
+      else if(p==="courses"){
+        app.innerHTML = CoursesPage(id||'all');   // id = testprep/skills/esp
+        attachCoursesHandlers(id||'all');
+      }
+
+      else if(p==="course"&&id) app.innerHTML=CourseDetailPage(id);
+
+      else if(p==="courses") app.innerHTML = CoursesPage();
+      else if(p==="course" && id) app.innerHTML = CourseDetailPage(id);
+      else if(p==="checkout" && id) app.innerHTML = CheckoutPage(id);
+
+      else if (p === "checkout") {
+        // hỗ trợ cả mua lẻ (#/checkout/:id) và cart (#/checkout)
+        app.innerHTML = CheckoutPage(id || null);
+      }
+
+      else if (p === 'checkout' && id === 'cart') {
+        app.innerHTML = CheckoutPage('cart');   // dùng cùng component CheckoutPage
+        return;
+      }
+      else if(p==="payment-success" && id) app.innerHTML = PaymentSuccessPage(id, a);   
+
+      else if(p==="about") app.innerHTML=AboutPage();
+
+      else if(p==="auth") app.innerHTML=AuthPage();
+
+      else if(p==="signup") {           // ← THÊM
+        app.innerHTML = SignupPage();
+        attachSignupHandlers();         // ← GẮN SỰ KIỆN SUBMIT
+      }
+
+      else if (p === "benefits") {
+        app.innerHTML = HomePage();
+        // cuộn mượt tới section
+        setTimeout(() => {
+          document.getElementById('benefits')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 0);
+      }
+
+      else app.innerHTML='<div class="text-center py-16 text-xl">404 – Không tìm thấy trang</div>';
+      renderAuthSlot(); // đảm bảo vùng auth cập nhật sau mỗi lần render page
+    }
+    
+    document.addEventListener('DOMContentLoaded', updateCartBadge);
+    window.addEventListener('hashchange', updateCartBadge);
+    window.addEventListener("hashchange", render);
+    window.addEventListener("load", render);
+    render();
+  </script>
+</body>
+</html>
