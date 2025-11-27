@@ -16,6 +16,7 @@
 
 
 ## 🧱 Cấu trúc thư mục
+```
 THE_ENGLIVERSE/
 │
 ├── index.html # Trang chính hiển thị khóa học
@@ -23,6 +24,7 @@ THE_ENGLIVERSE/
 ├── home.png # Ảnh giao diện chính
 ├── Logo.png # Logo dự án
 └── README.md # (Tệp mô tả dự án)
+```
 ## 💡 Hướng dẫn sử dụng
 1. Clone dự án về:
    ```bash
